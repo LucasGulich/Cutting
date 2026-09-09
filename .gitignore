@@ -1,0 +1,22 @@
+# Dependências
+node_modules/
+
+# Saída do empacotamento (electron-packager)
+dist/
+
+# Artefatos de diagnóstico gerados na máquina do usuário
+diagnostico.txt
+
+# Histórico de sessões de desenvolvimento — não faz parte do projeto
+_historico_conversa.md
+
+# Sistema operacional / editores
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# Temporários
+*.log
+*.tmp

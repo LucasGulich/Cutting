@@ -1,0 +1,3777 @@
+/* --- VARIÁVEIS DE DESIGN SYSTEM --- */
+:root {
+  --bg-primary: #0a0814;
+  --bg-secondary: #110e24;
+  --bg-tertiary: #191535;
+  --accent-purple: #8b5cf6;
+  --accent-pink: #ec4899;
+  --accent-cyan: #06b6d4;
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --text-dark: #6b7280;
+  
+  --glass-bg: rgba(17, 14, 36, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --border-radius-lg: 16px;
+  --border-radius-md: 10px;
+  --border-radius-sm: 6px;
+}
+
+/* --- RESET & CONFIGS BÁSICAS --- */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  user-select: none;
+}
+
+/* --- DECORAÇÃO DE FUNDO (Glows) --- */
+.bg-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: -1;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.bg-glow-1 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, var(--accent-purple) 0%, transparent 70%);
+  top: -100px;
+  left: -100px;
+}
+
+.bg-glow-2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, var(--accent-pink) 0%, transparent 70%);
+  bottom: -150px;
+  right: -100px;
+}
+
+/* --- ELEMENTOS DE ESTRUTURA --- */
+.app-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.screen {
+  display: none;
+  width: 100%;
+  height: 100%;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.screen.active {
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================
+   1. TELA DE MENU INICIAL (Home Screen)
+
+   A tela cumpre duas funções: dizer o que dá para fazer (as três ações) e
+   deixar continuar de onde parou (os projetos recentes). Por isso ela usa a
+   largura da janela em vez de empilhar tudo numa coluna estreita.
+   ========================================== */
+#home-screen {
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  padding: 2.5rem 2rem;
+  overflow-y: auto;
+}
+
+/* Duas luzes largas e fracas dão profundidade sem virar enfeite: o conteúdo
+   continua sendo a única coisa nítida da tela. */
+#home-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 520px at 30% -10%, rgba(139, 92, 246, 0.16), transparent 62%),
+    radial-gradient(900px 480px at 85% 110%, rgba(236, 72, 153, 0.13), transparent 60%);
+}
+
+.home-shell {
+  width: 100%;
+  max-width: 1000px;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  z-index: 10;
+}
+
+/* --- Marca --- */
+.home-brand {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+/* Selo da marca: o MESMO desenho do ícone do executável, para o atalho na
+   área de trabalho e a abertura do app mostrarem a mesma imagem. */
+.home-logo {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 62px;
+  height: 62px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+  box-shadow: 0 10px 26px rgba(139, 92, 246, 0.35);
+  animation: float 5s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+.home-brand-text {
+  min-width: 0;
+}
+
+.app-title {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1.05;
+  background: linear-gradient(120deg, #ffffff 25%, #c4b5fd 70%, #f9a8d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -1.2px;
+}
+
+.app-subtitle {
+  margin-top: 0.3rem;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  font-weight: 300;
+}
+
+/* --- As três ações --- */
+.home-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.home-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 1.4rem 1.3rem 1.2rem;
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--text-main);
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  backdrop-filter: blur(16px);
+  transition: var(--transition-smooth);
+  box-shadow: var(--card-shadow);
+}
+
+/* Fio de luz no topo do cartão: aparece no hover e dá o retorno do toque
+   sem precisar mexer no tamanho do texto. */
+.home-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink));
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.home-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(139, 92, 246, 0.45);
+  box-shadow: 0 16px 34px rgba(139, 92, 246, 0.18);
+}
+
+.home-card:hover::before { opacity: 1; }
+
+.home-card:focus-visible {
+  outline: 2px solid var(--accent-purple);
+  outline-offset: 2px;
+}
+
+/* A ação principal fica visualmente à frente das outras duas */
+.home-card.destaque {
+  background:
+    linear-gradient(140deg, rgba(139, 92, 246, 0.22) 0%, rgba(236, 72, 153, 0.1) 60%, transparent 100%),
+    var(--glass-bg);
+  border-color: rgba(139, 92, 246, 0.35);
+}
+
+.home-card.destaque::before { opacity: 0.75; }
+
+.home-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--border-radius-md);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--accent-purple);
+  transition: var(--transition-smooth);
+}
+
+.home-card.destaque .home-card-icon {
+  background: rgba(139, 92, 246, 0.2);
+  color: #fff;
+}
+
+.home-card:hover .home-card-icon {
+  color: #fff;
+  background: rgba(236, 72, 153, 0.28);
+}
+
+.home-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.home-card-desc {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  font-weight: 300;
+}
+
+.home-card-desc code {
+  font-family: inherit;
+  color: var(--accent-cyan);
+}
+
+/* A chamada só ganha cor no hover: sem isso, três setas acesas competiriam
+   entre si e nenhuma seria a principal. */
+.home-card-go {
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  transition: var(--transition-smooth);
+}
+
+.home-card:hover .home-card-go { color: var(--accent-pink); }
+.home-card.destaque .home-card-go { color: #c4b5fd; }
+.home-card.destaque:hover .home-card-go { color: #fff; }
+
+/* --- Projetos recentes --- */
+.home-section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-dark);
+  margin-bottom: 0.7rem;
+}
+
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--glass-border);
+  background: rgba(17, 14, 36, 0.5);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  text-align: left;
+  font-family: inherit;
+  color: var(--text-main);
+  width: 100%;
+}
+
+.recent-item:hover {
+  border-color: rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.recent-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+}
+
+.recent-name {
+  flex: 0 0 auto;
+  font-size: 0.85rem;
+  font-weight: 600;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* O caminho é o que diferencia dois projetos de mesmo nome, então ele encolhe
+   pelo INÍCIO — o fim (a pasta) é a parte que identifica. */
+.recent-path {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.74rem;
+  color: var(--text-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+.recent-when {
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* Arquivo que saiu do lugar: continua na lista para poder ser removido, mas
+   sem fingir que ainda abre. */
+.recent-item.sumiu .recent-name,
+.recent-item.sumiu .recent-path { text-decoration: line-through; opacity: 0.55; }
+.recent-item.sumiu .recent-when { color: #f87171; }
+
+.recent-remove {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  background: transparent;
+  color: var(--text-dark);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.recent-remove:hover { background: rgba(239, 68, 68, 0.18); color: #fca5a5; }
+
+.recent-empty {
+  font-size: 0.82rem;
+  color: var(--text-dark);
+  font-weight: 300;
+}
+
+.kbd-inline {
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* --- Rodapé --- */
+.home-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.home-tags {
+  font-size: 0.72rem;
+  color: var(--text-dark);
+  font-weight: 300;
+}
+
+.version-tag {
+  font-size: 0.72rem;
+  color: var(--text-dark);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+/* Janela estreita: as ações viram uma coluna e o rodapé quebra */
+@media (max-width: 860px) {
+  .home-actions { grid-template-columns: minmax(0, 1fr); }
+  .home-footer { flex-direction: column; align-items: flex-start; }
+  .home-tags { display: none; }
+}
+
+/* ==========================================
+   2. TELA DE EDICÃO (Cut Screen)
+   ========================================== */
+
+/* Cabeçalho da Tela */
+/* Grid de 3 colunas: mantém o título exatamente centralizado,
+   independente da largura dos botões das pontas. */
+.screen-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 1.5rem;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--glass-border);
+  height: 64px;
+}
+
+.header-left { justify-self: start; }
+.header-right { justify-self: end; }
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.9rem 0.5rem 0.7rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  border-radius: 100px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.back-btn svg {
+  transition: transform 0.2s ease;
+}
+
+/* Só a seta se move — o botão fica firme no lugar */
+.back-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.back-btn:hover svg {
+  transform: translateX(-3px);
+}
+
+.back-btn:active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Botão secundário do lado direito do cabeçalho (ex.: Atalhos) */
+.header-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  border-radius: 100px;
+  color: var(--text-dark);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.header-action:hover {
+  color: #fff;
+  border-color: var(--accent-purple);
+  background: rgba(139, 92, 246, 0.12);
+}
+
+.header-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Layout com Colunas */
+.editor-layout {
+  display: flex;
+  flex: 1;
+  height: calc(100vh - 64px);
+  overflow: hidden;
+}
+
+/* Layout da tela de corte: player + barra lateral em cima, linha do tempo
+   ocupando a largura toda embaixo. Grid em vez de flex porque a linha do tempo
+   precisa atravessar as duas colunas.
+   minmax(0, 1fr) na primeira linha é o que permite a área de cima ENCOLHER —
+   com `1fr` puro o conteúdo definiria a altura mínima e empurraria a linha do
+   tempo para fora da tela. */
+.editor-layout-tracks {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "player sidebar"
+    "timeline timeline";
+}
+
+.editor-layout-tracks > .player-container-section { grid-area: player; min-height: 0; }
+.editor-layout-tracks > .sidebar-section { grid-area: sidebar; min-height: 0; }
+.editor-layout-tracks > .timeline-section { grid-area: timeline; }
+
+/* --- LINHA DO TEMPO EM FAIXAS --- */
+.timeline-section {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--glass-border);
+  height: 232px;
+  min-height: 0;
+}
+
+.timeline-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.9rem;
+  border-bottom: 1px solid var(--glass-border);
+  flex-wrap: wrap;
+}
+
+.timeline-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.timeline-toolbar-group .ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.timeline-toolbar-group .ghost-btn.is-playing {
+  background: rgba(236, 72, 153, 0.18);
+  border-color: var(--accent-pink);
+  color: #fff;
+}
+
+.timeline-total {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.timeline-total strong {
+  font-family: monospace;
+  color: var(--text-main);
+}
+
+.timeline-zoom {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--text-dark);
+}
+
+.timeline-zoom input {
+  width: 90px;
+  accent-color: var(--accent-purple);
+}
+
+.timeline-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Coluna fixa com o nome e os controles de cada faixa */
+.track-headers {
+  flex: 0 0 132px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.25);
+  border-right: 1px solid var(--glass-border);
+  /* Rola junto com as faixas, mas sem barra própria: quem rola é a área das
+     faixas, e o JS espelha o scrollTop aqui. */
+  overflow: hidden;
+}
+
+/* O canto e as linhas não podem encolher, senão o alinhamento com as faixas
+   se perde quando há muitas delas. */
+.ruler-corner, .track-header, .text-lane-header { flex-shrink: 0; }
+
+/* Espaço vazio alinhado com a régua de tempo */
+.ruler-corner {
+  height: 22px;
+  flex: 0 0 22px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.track-header {
+  flex: 0 0 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0 0.4rem 0 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.track-header:hover { background: rgba(255, 255, 255, 0.03); }
+
+.track-header.active {
+  background: rgba(139, 92, 246, 0.14);
+  box-shadow: inset 2px 0 0 var(--accent-purple);
+}
+
+.track-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-header.active .track-name { color: #fff; }
+
+.track-toggle {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.62rem;
+  transition: var(--transition-smooth);
+}
+
+.track-toggle:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.track-toggle.off { background: rgba(236, 72, 153, 0.25); color: #f9a8d4; }
+
+/* Área rolável com a régua e as faixas */
+.timeline-scroll {
+  flex: 1;
+  overflow: auto;
+  min-width: 0;
+}
+
+.timeline-inner {
+  position: relative;
+  min-width: 100%;
+}
+
+.timeline-ruler {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 22px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.ruler-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  padding-left: 3px;
+  font-size: 0.58rem;
+  font-family: monospace;
+  color: var(--text-dark);
+  line-height: 22px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.timeline-rows {
+  position: relative;
+}
+
+.timeline-row {
+  position: relative;
+  height: 46px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+}
+
+.timeline-row.audio { background-color: rgba(6, 182, 212, 0.04); }
+.timeline-row.drop-target { background-color: rgba(139, 92, 246, 0.12); }
+
+/* Bloco de um item na faixa */
+.tl-item {
+  position: absolute;
+  top: 4px;
+  height: 38px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.75), rgba(139, 92, 246, 0.5));
+  color: #fff;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  min-width: 6px;
+}
+
+.tl-item.kind-image {
+  background: linear-gradient(180deg, rgba(236, 72, 153, 0.75), rgba(236, 72, 153, 0.5));
+}
+
+.tl-item.kind-audio {
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.75), rgba(6, 182, 212, 0.5));
+}
+
+.tl-item.selected {
+  border-color: #fff;
+  box-shadow: 0 0 0 1px #fff, 0 4px 14px rgba(0, 0, 0, 0.45);
+  z-index: 2;
+}
+
+.tl-item.dragging { cursor: grabbing; opacity: 0.85; }
+.tl-item.muted { opacity: 0.55; }
+
+.tl-item-label {
+  flex: 1;
+  min-width: 0;
+  padding: 0 0.4rem;
+  font-size: 0.64rem;
+  font-weight: 600;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tl-item-label small {
+  display: block;
+  font-weight: 500;
+  opacity: 0.8;
+  font-family: monospace;
+  font-size: 0.58rem;
+}
+
+/* Alças de aparar nas bordas do bloco */
+.tl-item-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7px;
+  cursor: ew-resize;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.tl-item-handle:hover { background: rgba(255, 255, 255, 0.6); }
+.tl-item-handle.left { left: 0; }
+.tl-item-handle.right { right: 0; }
+
+.timeline-playhead-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent-pink);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.timeline-empty {
+  padding: 0.85rem 1rem;
+  font-size: 0.74rem;
+  color: var(--text-dark);
+  text-align: center;
+  border-top: 1px solid var(--glass-border);
+}
+
+/* --- Card do item selecionado (barra lateral) --- */
+.item-card { flex-shrink: 0; }
+
+.item-props {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.item-prop-line {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.item-prop-line strong { color: var(--text-main); font-family: monospace; }
+
+.field-group.compact { margin-bottom: 0; }
+
+.field-group.compact label {
+  font-size: 0.72rem;
+  margin-bottom: 0.35rem;
+}
+
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.item-actions-row {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.chip-btn.danger {
+  background: rgba(236, 72, 153, 0.14);
+  border-color: rgba(236, 72, 153, 0.4);
+  color: #f9a8d4;
+}
+
+.chip-btn.danger:hover {
+  background: rgba(236, 72, 153, 0.26);
+  border-color: var(--accent-pink);
+  color: #fff;
+}
+
+.chip-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Seção do Player (Esquerda) */
+.player-container-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-primary);
+  padding: 1.5rem;
+  overflow-y: auto;
+  border-right: 1px solid var(--glass-border);
+}
+
+/* Sidebar (Direita) */
+.sidebar-section {
+  width: 360px;
+  background-color: var(--bg-secondary);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  overflow-y: auto;
+  min-width: 320px;
+}
+
+/* Área de Drop do Vídeo */
+.drop-zone-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed rgba(139, 92, 246, 0.25);
+  border-radius: var(--border-radius-lg);
+  background: rgba(17, 14, 36, 0.4);
+  transition: var(--transition-smooth);
+  min-height: 300px;
+}
+
+.drop-zone-wrapper:hover, .drop-zone-wrapper.dragover {
+  border-color: var(--accent-pink);
+  background: rgba(17, 14, 36, 0.7);
+}
+
+.drop-zone-content {
+  text-align: center;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.upload-icon {
+  width: 56px;
+  height: 56px;
+  color: var(--accent-purple);
+  margin-bottom: 1.25rem;
+  transition: var(--transition-smooth);
+}
+
+.drop-zone-wrapper:hover .upload-icon {
+  color: var(--accent-pink);
+  transform: translateY(-5px);
+}
+
+.drop-zone-content h3 {
+  font-size: 1.15rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.drop-zone-content p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+
+.select-file-btn {
+  padding: 0.75rem 1.75rem;
+  border-radius: var(--border-radius-md);
+  border: none;
+  background: linear-gradient(135deg, var(--accent-purple) 0%, #7c3aed 100%);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.select-file-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.5);
+  background: linear-gradient(135deg, #9333ea 0%, #6d28d9 100%);
+}
+
+/* Loading Wrapper */
+.loading-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.loader {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.05);
+  border-top-color: var(--accent-pink);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-wrapper h3 {
+  font-size: 1.15rem;
+}
+
+.loading-wrapper p {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* Player e Vídeo */
+.player-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 1.25rem;
+  height: 100%;
+}
+
+.video-holder {
+  position: relative; /* âncora do .video-badge */
+  flex: 1;
+  background-color: #000;
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--glass-border);
+  min-height: 220px;
+}
+
+/* --- PALCO DA MÍDIA ---
+   O quadro tem a proporção da SAÍDA e recorta o que passa dele, então a prévia
+   corresponde ao vídeo final. A mídia é posicionada em porcentagens calculadas
+   pelo JS, com a mesma fórmula que o ffmpeg usa na exportação. */
+.media-stage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  min-height: 0;
+}
+
+.media-frame {
+  position: relative;
+  overflow: hidden;
+  background: #000;
+  max-width: 100%;
+  /* min-height:0 + flex:1 deixam o quadro encolher para caber na altura
+     disponível, em vez de empurrar a legenda para fora do player */
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 100%;
+  margin: 0 auto;
+  cursor: grab;
+}
+
+.media-frame.dragging {
+  cursor: grabbing;
+}
+
+.media-frame-bg {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* O scale evita que a borda desfocada mostre o vazio das extremidades */
+.media-frame-bg.blurred {
+  filter: blur(22px) saturate(1.2);
+  transform: scale(1.15);
+}
+
+/* Camada de fundo desfocado para VÍDEO. Um arquivo de vídeo não pode ser
+   background-image, então o fundo é um segundo <video> cobrindo o quadro,
+   sincronizado com o principal. */
+.media-frame-bg-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(22px) saturate(1.2);
+  transform: scale(1.15);
+  pointer-events: none;
+}
+
+#video-element,
+#image-element {
+  position: absolute;
+  /* Largura e altura já vêm com a proporção correta do JS, então `fill` é o
+     equivalente exato do scale=w:h do ffmpeg — sem reajuste em cima. */
+  object-fit: fill;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.media-frame-caption {
+  flex: 0 0 auto;
+  font-size: 0.66rem;
+  color: var(--text-dark);
+  letter-spacing: 0.3px;
+}
+
+/* Duas ações na área de importação (vídeos / fotos) */
+.drop-zone-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.select-file-btn.secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  box-shadow: none;
+}
+
+.select-file-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent-cyan);
+}
+
+/* --- PAINEL DE ENQUADRAMENTO (foto e vídeo) --- */
+.framing-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+}
+
+.framing-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.framing-toggle:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+}
+
+.framing-chevron {
+  margin-left: auto;
+  font-size: 0.7rem;
+}
+
+.framing-badge {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  background: rgba(139, 92, 246, 0.25);
+  color: #d8b4fe;
+}
+
+.framing-body {
+  padding: 0 0.9rem 0.9rem;
+}
+
+.framing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.9rem;
+}
+
+.framing-col {
+  min-width: 0;
+}
+
+.framing-col label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.framing-hint {
+  margin-top: 0.8rem;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--text-dark);
+}
+
+.duration-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.45rem;
+}
+
+.duration-input {
+  width: 80px;
+  flex: 0 0 auto;
+}
+
+.duration-unit {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.duration-presets {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+/* Zoom */
+.zoom-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.45rem;
+}
+
+.zoom-slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent-purple);
+}
+
+.zoom-readout {
+  flex: 0 0 auto;
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  min-width: 38px;
+  text-align: right;
+}
+
+/* Fundo */
+.segmented-compact .segment span {
+  padding: 0.4rem 0.5rem;
+  font-size: 0.72rem;
+}
+
+.bg-color-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+  flex-wrap: wrap;
+}
+
+#input-bg-color {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-sm);
+  background: none;
+  cursor: pointer;
+}
+
+.color-swatches {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  padding: 0;
+  transition: var(--transition-smooth);
+}
+
+.swatch:hover {
+  transform: scale(1.15);
+  border-color: #fff;
+}
+
+/* Barra de "estou ajustando um trecho da sequência" */
+.editing-clip-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--border-radius-sm);
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #d8b4fe;
+}
+
+/* Trecho com enquadramento personalizado, na lista da sequência */
+.action-mini-btn.has-framing {
+  color: #d8b4fe;
+  background: rgba(139, 92, 246, 0.2);
+}
+
+.chip-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  border-radius: 100px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.chip-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: var(--accent-purple);
+  color: #fff;
+}
+
+/* --- PRÉVIA DA SEQUÊNCIA (sobreposta ao player) --- */
+.sequence-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.7rem 0.9rem;
+  background: linear-gradient(to top, rgba(5, 4, 12, 0.92), rgba(5, 4, 12, 0));
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.sequence-overlay-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.sequence-overlay-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.sequence-overlay-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+
+.sequence-overlay-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink));
+  transition: width 0.1s linear;
+}
+
+.sequence-overlay-time {
+  font-size: 0.68rem;
+  font-family: monospace;
+  color: var(--text-muted);
+}
+
+/* --- SELETOR DE AJUSTE (encaixar / preencher) --- */
+.fit-choice {
+  margin-top: 0.7rem;
+}
+
+.fit-choice-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.segmented {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.segment {
+  flex: 1;
+  min-width: 0; /* sem isto o texto interno impede o encolhimento no flex */
+  cursor: pointer;
+}
+
+.segment input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segment span {
+  display: block;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  transition: var(--transition-smooth);
+}
+
+.segment em {
+  display: block;
+  font-style: normal;
+  font-weight: 500;
+  font-size: 0.64rem;
+  color: var(--text-dark);
+  margin-top: 0.1rem;
+}
+
+.segment:hover span {
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.segment input:checked + span {
+  background: rgba(139, 92, 246, 0.18);
+  border-color: var(--accent-purple);
+  color: #fff;
+}
+
+.segment input:checked + span em {
+  color: #d8b4fe;
+}
+
+.segment input:focus-visible + span {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
+.fit-warning {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.68rem;
+  line-height: 1.45;
+  border: 1px solid transparent;
+}
+
+.fit-warning.info {
+  background: rgba(6, 182, 212, 0.08);
+  border-color: rgba(6, 182, 212, 0.3);
+  color: #67e8f9;
+}
+
+.fit-warning.warn {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fcd34d;
+}
+
+/* LINHA DO TEMPO (Timeline) */
+.timeline-area {
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-md);
+  padding: 1rem;
+}
+
+.time-displays {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.time-displays span {
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-track-container {
+  position: relative;
+  height: 42px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.timeline-ticks {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Linha de progresso padrão do player */
+.timeline-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+/* Faixas em destaque dos cortes existentes */
+.cuts-highlights-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.cut-segment-highlight {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.25) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border-left: 2px solid var(--accent-purple);
+  border-right: 2px solid var(--accent-purple);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.cut-segment-highlight.active {
+  background: linear-gradient(180deg, rgba(236, 72, 153, 0.3) 0%, rgba(236, 72, 153, 0.15) 100%);
+  border-color: var(--accent-pink);
+}
+
+/* Faixa do corte que está sendo marcado no momento */
+.current-cut-range {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  background: rgba(6, 182, 212, 0.15);
+  border-left: 2px dashed var(--accent-cyan);
+  border-right: 2px dashed var(--accent-cyan);
+  border-radius: 3px;
+  pointer-events: none;
+  display: none;
+}
+
+/* Agulha (Playhead) */
+.timeline-playhead {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background-color: var(--accent-pink);
+  pointer-events: none;
+  transform: translateX(-50%);
+  box-shadow: 0 0 8px var(--accent-pink);
+  z-index: 5;
+}
+
+.timeline-playhead::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -30%);
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--accent-pink);
+  box-shadow: 0 0 6px var(--accent-pink);
+}
+
+/* Painel de Controles */
+.controls-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.player-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.control-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-smooth);
+}
+
+.control-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(1.05);
+  border-color: var(--accent-purple);
+}
+
+.control-btn.play-btn {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--accent-purple), #7c3aed);
+  border: none;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+}
+
+.control-btn.play-btn:hover {
+  background: linear-gradient(135deg, #9333ea, #6d28d9);
+  box-shadow: 0 6px 16px rgba(139, 92, 246, 0.6);
+  transform: scale(1.08);
+}
+
+/* Divisor entre grupos de controles do player */
+.controls-divider {
+  width: 1px;
+  height: 26px;
+  background: var(--glass-border);
+  margin: 0 0.25rem;
+}
+
+/* Volume e velocidade */
+.volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 78px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(139, 92, 246, 0.6);
+}
+
+.speed-select {
+  background: var(--bg-primary);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  border-radius: var(--border-radius-sm);
+  padding: 0.3rem 0.4rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Painel de Marcadores (IN / OUT) */
+.markers-panel {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1rem;
+  align-items: start;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.85rem;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--glass-border);
+}
+
+.marker-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.marker-column-center {
+  align-items: center;
+  justify-content: center;
+  padding-top: 0.2rem;
+}
+
+.selection-readout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.selection-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dark);
+}
+
+.selection-value {
+  font-family: monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  font-variant-numeric: tabular-nums;
+}
+
+.selection-actions {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.ghost-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  border-radius: var(--border-radius-sm);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.ghost-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: var(--accent-cyan);
+}
+
+.ghost-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.time-box-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.micro-actions {
+  display: flex;
+  gap: 0.15rem;
+}
+
+.micro-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  width: 20px;
+  height: 18px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  line-height: 1;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--transition-smooth);
+}
+
+.micro-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-color: var(--accent-cyan);
+}
+
+.marker-btn {
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--border-radius-sm);
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.marker-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent-cyan);
+}
+
+.marker-btn .bracket {
+  color: var(--accent-cyan);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.time-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.time-box label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.time-box input {
+  background: var(--bg-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-sm);
+  padding: 0.4rem 0.5rem;
+  width: 100%;
+  min-width: 0;
+  color: var(--text-main);
+  text-align: center;
+  font-family: monospace;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  user-select: text;
+}
+
+.time-box input:focus {
+  outline: none;
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 6px rgba(139, 92, 246, 0.3);
+}
+
+.add-cut-btn {
+  padding: 0.7rem 1.25rem;
+  background: linear-gradient(135deg, var(--accent-cyan), #0891b2);
+  border: none;
+  color: #fff;
+  border-radius: var(--border-radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  font-size: 0.9rem;
+  font-family: inherit;
+  box-shadow: 0 4px 10px rgba(6, 182, 212, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.add-cut-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0e7490, #0891b2);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(6, 182, 212, 0.4);
+}
+
+.add-cut-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  filter: grayscale(0.6);
+}
+
+.kbd-hint {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  letter-spacing: 0.5px;
+}
+
+/* ==========================================
+   CARDS DA SIDEBAR (Painel Lateral)
+   ========================================== */
+.card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-lg);
+  padding: 1.25rem;
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+}
+
+.card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: #fff;
+  border-left: 3px solid var(--accent-purple);
+  padding-left: 0.5rem;
+}
+
+.card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.card-header-row h3 {
+  margin-bottom: 0;
+}
+
+.badge {
+  background: var(--accent-purple);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+}
+
+/* Informações do Vídeo */
+.info-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.info-grid .label {
+  color: var(--text-muted);
+}
+
+.info-grid .value {
+  color: #fff;
+  font-weight: 500;
+  text-align: right;
+}
+
+.text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.change-video-btn {
+  width: 100%;
+  margin-top: 0.7rem;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  padding: 0.45rem;
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-family: inherit;
+  transition: var(--transition-smooth);
+}
+
+.change-video-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Lista de Cortes na Sidebar */
+.cuts-list-card {
+  flex: 1;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sources-card {
+  flex-shrink: 0;
+}
+
+/* Container de listas (fontes, sequência, mesclagem)
+   overflow-x: hidden é essencial: sem ele, o overflow-y:auto faz o eixo X
+   virar "auto" também, e qualquer item mais largo que o card cria uma barra
+   de rolagem horizontal fantasma no rodapé da lista. */
+.list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: 300px;
+  padding-right: 0.2rem;
+  min-height: 0;
+}
+
+.list-container.compact {
+  max-height: 150px;
+}
+
+.empty-cuts-message {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-dark);
+  padding: 1.75rem 1rem;
+  border: 1px dashed rgba(255, 255, 255, 0.05);
+  border-radius: var(--border-radius-md);
+  line-height: 1.5;
+}
+
+/* Item de lista genérico (fonte, clipe ou vídeo da mesclagem) */
+.list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--border-radius-md);
+  transition: background 0.2s, border-color 0.2s;
+  cursor: pointer;
+  /* Impede que o conteúdo estique o item além da largura do card */
+  min-width: 0;
+  max-width: 100%;
+}
+
+.list-item:hover {
+  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.list-item.active {
+  background: rgba(139, 92, 246, 0.14);
+  border-color: var(--accent-purple);
+}
+
+.list-item.from-active {
+  border-left: 3px solid var(--accent-cyan);
+}
+
+.item-index {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.18);
+  color: #ddd6fe;
+  font-size: 0.68rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* min-width: 0 permite que o text-overflow do título realmente funcione
+   dentro de um container flex — sem isso o bloco recusa encolher. */
+.item-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.item-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.item-meta {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-family: monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* flex-shrink: 0 mantém os botões íntegros; era o que fazia o "subir" e a
+   lixeira serem empurrados para fora do card na tela de mesclagem. */
+.item-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.2rem;
+}
+
+.source-tag {
+  flex: 0 0 auto;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  background: rgba(6, 182, 212, 0.2);
+  color: #67e8f9;
+  letter-spacing: 0.5px;
+}
+
+/* Etiqueta FOTO na lista de mídias */
+.kind-tag {
+  flex: 0 0 auto;
+  margin-right: 0.35rem;
+  font-size: 0.58rem;
+  font-weight: 800;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  background: rgba(236, 72, 153, 0.2);
+  color: #f9a8d4;
+  letter-spacing: 0.5px;
+}
+
+/* Duração editável de um trecho de foto, dentro da linha da sequência */
+.clip-duration-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.clip-duration-input {
+  width: 58px;
+  padding: 0.1rem 0.3rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.7rem;
+}
+
+.clip-duration-input:focus {
+  outline: none;
+  border-color: var(--accent-purple);
+}
+
+/* Ações no cabeçalho do card (prévia da montagem + contador) */
+.card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.card-header-actions .ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.card-header-actions .ghost-btn.is-playing {
+  background: rgba(236, 72, 153, 0.18);
+  border-color: var(--accent-pink);
+  color: #fff;
+}
+
+/* Botões de adicionar mídia, lado a lado */
+.add-source-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.add-source-row .change-video-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.action-mini-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.action-mini-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.action-mini-btn:disabled {
+  opacity: 0.2;
+  cursor: default;
+}
+
+.action-mini-btn.play-cut:hover:not(:disabled),
+.action-mini-btn.move-up:hover:not(:disabled),
+.action-mini-btn.move-down:hover:not(:disabled),
+.action-mini-btn.duplicate-cut:hover:not(:disabled) {
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+}
+
+.action-mini-btn.delete-cut:hover:not(:disabled),
+.action-mini-btn.remove-source:hover:not(:disabled) {
+  color: #f87171;
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.05);
+}
+
+/* Rodapé com a duração total da sequência */
+.sequence-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--glass-border);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.sequence-footer strong {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--accent-cyan);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Card de Ações */
+.actions-card.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* Campos de formulário da exportação */
+.field-group {
+  margin-bottom: 0.9rem;
+}
+
+.field-group label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+  display: block;
+}
+
+.input-action-group {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.text-input,
+.select-input,
+.input-action-group input {
+  width: 100%;
+  min-width: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-sm);
+  padding: 0.5rem 0.7rem;
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+
+.input-action-group input {
+  flex: 1 1 auto;
+  text-overflow: ellipsis;
+}
+
+.text-input {
+  user-select: text;
+}
+
+.select-input {
+  cursor: pointer;
+}
+
+.text-input:focus,
+.select-input:focus {
+  outline: none;
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 6px rgba(139, 92, 246, 0.3);
+}
+
+.field-hint {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: var(--text-dark);
+  word-break: break-word;
+}
+
+/* Aviso de desvio do corte Rápido */
+.drift-warning {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--border-radius-sm);
+  font-size: 0.68rem;
+  line-height: 1.45;
+  border: 1px solid transparent;
+}
+
+.drift-warning.checking {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--glass-border);
+  color: var(--text-dark);
+}
+
+.drift-warning.ok {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #6ee7b7;
+}
+
+.drift-warning.warn {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fcd34d;
+}
+
+.drift-warning strong { color: #fde68a; }
+.drift-warning em { color: #fff; font-style: normal; font-weight: 700; }
+
+.drift-list {
+  display: block;
+  margin-top: 0.35rem;
+  font-family: monospace;
+  font-size: 0.64rem;
+  color: rgba(253, 230, 138, 0.75);
+}
+
+.field-hint code {
+  font-family: monospace;
+  font-size: 0.66rem;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.05rem 0.25rem;
+  border-radius: 3px;
+  color: var(--text-muted);
+}
+
+.btn-icon-select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  width: 36px;
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.btn-icon-select:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--accent-purple);
+}
+
+.export-btn-primary {
+  padding: 0.85rem;
+  width: 100%;
+  border-radius: var(--border-radius-md);
+  border: none;
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  box-shadow: 0 4px 15px rgba(236, 72, 153, 0.25);
+  font-size: 0.95rem;
+}
+
+.export-btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(236, 72, 153, 0.45);
+  filter: brightness(1.1);
+}
+
+.export-btn-primary:disabled {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-dark);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Card de Progresso */
+.progress-bar-container {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.progress-bar-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-purple), var(--accent-pink));
+  transition: width 0.2s ease-out;
+  border-radius: 4px;
+}
+
+.progress-status-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.export-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 220px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: var(--border-radius-sm);
+  border-left: 3px solid var(--text-dark);
+  min-width: 0;
+}
+
+.result-row.processing {
+  border-left-color: var(--accent-purple);
+}
+
+.result-row.success {
+  border-left-color: #10b981;
+}
+
+.result-row.error {
+  border-left-color: #ef4444;
+}
+
+.result-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.result-badge {
+  flex: 0 0 auto;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.result-row.success .result-badge {
+  color: #10b981;
+}
+
+.result-row.error .result-badge {
+  color: #ef4444;
+}
+
+.close-progress-btn {
+  padding: 0.6rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  border-radius: var(--border-radius-sm);
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: var(--transition-smooth);
+}
+
+.close-progress-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent-purple);
+}
+
+/* Esconder elementos */
+.hidden {
+  display: none !important;
+}
+
+/* Scrollbar Customizada */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ==========================================
+   ALÇAS ARRASTÁVEIS DE IN / OUT NA TIMELINE
+   ========================================== */
+.range-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  transform: translateX(-50%);
+  cursor: ew-resize;
+  display: none;
+  z-index: 6;
+  background: transparent;
+}
+
+/* A barra visível fica no centro da área clicável (que é maior, para facilitar pegar) */
+.range-handle::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  border-radius: 2px;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
+}
+
+/* Grip: três tracinhos no meio da alça */
+.range-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 12px;
+  border-radius: 1px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.range-handle:hover::before,
+.range-handle.dragging::before {
+  width: 6px;
+  background: #22d3ee;
+  box-shadow: 0 0 14px rgba(34, 211, 238, 1);
+}
+
+/* ==========================================
+   RÉGUA DE TEMPO DA TIMELINE
+   ========================================== */
+.timeline-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.timeline-tick span {
+  position: absolute;
+  bottom: 1px;
+  left: 3px;
+  font-size: 0.58rem;
+  font-family: monospace;
+  color: rgba(255, 255, 255, 0.28);
+  white-space: nowrap;
+}
+
+/* ==========================================
+   BADGE DO VÍDEO ATIVO SOBRE O PLAYER
+   ========================================== */
+.video-badge {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  max-width: calc(100% - 1.2rem);
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--border-radius-sm);
+  background: rgba(10, 8, 20, 0.78);
+  border: 1px solid var(--glass-border);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+/* Destaques dos displays de tempo */
+.time-strong {
+  color: var(--text-main) !important;
+  font-weight: 700;
+}
+
+.time-selection {
+  color: var(--accent-cyan) !important;
+}
+
+/* Ações no rodapé do painel de progresso */
+.progress-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.progress-actions .ghost-btn,
+.progress-actions .close-progress-btn {
+  flex: 1;
+  margin-top: 0;
+}
+
+/* ==========================================
+   MODAL (ATALHOS DE TECLADO)
+   ========================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(5, 4, 12, 0.75);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.modal-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--card-shadow);
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 460px;
+  max-height: 85vh;
+  overflow-y: auto;
+  animation: modal-in 0.18s ease-out;
+}
+
+.modal-card-wide {
+  max-width: 520px;
+}
+
+.modal-card-narrow {
+  max-width: 420px;
+}
+
+/* Confirmação por cima de qualquer outro modal — ela pode ser aberta com um
+   modal de exportação já na tela (ex.: fechar o app durante o processamento). */
+#confirm-modal {
+  z-index: 120;
+}
+
+.confirm-body {
+  padding-top: 0.35rem;
+}
+
+.confirm-message {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.confirm-details {
+  list-style: none;
+  margin-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.confirm-details li {
+  position: relative;
+  padding: 0.55rem 0.75rem 0.55rem 1.65rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-main);
+  font-size: 0.84rem;
+  line-height: 1.35;
+  /* Nome de arquivo longo não tem espaço para quebrar sozinho, e o overflow-y
+     do card faz o eixo X virar `auto` — sem isto, transborda e cria a barra de
+     rolagem horizontal fantasma. */
+  overflow-wrap: anywhere;
+}
+
+/* Marcador próprio: o list-style padrão não acompanha o padding do item */
+.confirm-details li::before {
+  content: '';
+  position: absolute;
+  left: 0.75rem;
+  top: 1.05em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-pink);
+}
+
+/* Ação destrutiva: destaque sem competir com a primária roxa do app */
+.danger-btn {
+  flex: 1;
+  background: rgba(236, 72, 153, 0.12);
+  border: 1px solid rgba(236, 72, 153, 0.45);
+  color: #f9a8d4;
+  border-radius: var(--border-radius-md);
+  padding: 0.8rem 1.1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.danger-btn:hover {
+  background: rgba(236, 72, 153, 0.22);
+  border-color: var(--accent-pink);
+  color: #fff;
+}
+
+.danger-btn:focus-visible,
+.modal-footer .ghost-btn:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 2px;
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Rodapé de ações do modal */
+.modal-footer {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.modal-footer .ghost-btn {
+  flex: 0 0 auto;
+  padding: 0.7rem 1.1rem;
+  font-size: 0.85rem;
+}
+
+.modal-footer .export-btn-primary {
+  flex: 1;
+  margin-top: 0;
+}
+
+/* Resumo do que será exportado, no topo do modal */
+.export-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.85rem;
+  margin-bottom: 1.1rem;
+  border-radius: var(--border-radius-md);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  font-size: 0.8rem;
+  color: var(--text-main);
+}
+
+.export-summary strong {
+  color: #ddd6fe;
+}
+
+.export-summary .summary-sep {
+  color: var(--text-dark);
+  margin: 0 0.5rem;
+}
+
+/* Botão principal fixo no rodapé da sidebar */
+.sidebar-cta {
+  margin-top: 0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.modal-header h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.3rem;
+  border-radius: var(--border-radius-sm);
+  transition: var(--transition-smooth);
+}
+
+.modal-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.shortcuts-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem 1rem;
+  align-items: center;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.kbd {
+  font-family: monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 0.2rem 0.45rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.action-mini-btn.move-down:hover {
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+}
+
+.cut-item-index {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-right: 0.5rem;
+}
+
+
+/* ==========================================================================
+   LAYOUT DO EDITOR (padrão dos editores: biblioteca | monitor / linha do tempo)
+   ========================================================================== */
+.editor-shell {
+  /* Ocupa o que sobra da altura da tela, sem número mágico: `min-height: 0`
+     é o que permite encolher dentro do flex do .screen — sem ele o conteúdo
+     define o piso e a linha do tempo é empurrada para fora da janela. */
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  /* minmax(0,...) nas duas faixas é o que deixa a área de cima ENCOLHER; com
+     1fr puro o conteúdo definiria a altura mínima e empurraria a linha do
+     tempo para fora da tela. */
+  grid-template-rows: minmax(0, 1fr) minmax(0, auto);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor-top {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* --- Coluna esquerda: biblioteca / propriedades --- */
+.left-dock {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--glass-border);
+}
+
+.dock-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.dock-tab {
+  flex: 1;
+  padding: 0.65rem 0.5rem;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dark);
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.dock-tab:hover:not(:disabled) { color: var(--text-main); }
+.dock-tab.active { color: #fff; border-bottom-color: var(--accent-purple); }
+.dock-tab:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.dock-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.media-import-row {
+  display: flex;
+  gap: 0.35rem;
+  flex: 0 0 auto;
+}
+
+.media-import-row .chip-btn { flex: 1; }
+
+/* Grade de miniaturas */
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(126px, 1fr));
+  gap: 0.5rem;
+  align-content: start;
+}
+
+.media-grid.dragover, .media-empty.dragover {
+  outline: 2px dashed var(--accent-purple);
+  outline-offset: 3px;
+  border-radius: var(--border-radius-md);
+}
+
+.media-card {
+  position: relative;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  cursor: grab;
+  transition: var(--transition-smooth);
+}
+
+.media-card:hover { border-color: rgba(139, 92, 246, 0.6); }
+.media-card.active { border-color: var(--accent-purple); background: rgba(139, 92, 246, 0.12); }
+.media-card.dragging { opacity: 0.5; }
+
+.media-thumb {
+  height: 68px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.media-thumb img, .media-thumb video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-thumb.icon { color: var(--accent-cyan); background: rgba(6, 182, 212, 0.1); }
+
+.media-info {
+  padding: 0.35rem 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.media-name {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-meta { font-size: 0.6rem; color: var(--text-dark); }
+
+.media-remove {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: rgba(5, 4, 12, 0.75);
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+  padding: 0;
+  transition: var(--transition-smooth);
+}
+
+.media-card:hover .media-remove { opacity: 1; }
+.media-remove:hover { background: var(--accent-pink); color: #fff; }
+
+.media-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  text-align: center;
+  color: var(--text-dark);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: var(--border-radius-md);
+  padding: 1.5rem 1rem;
+}
+
+.media-empty strong { color: var(--text-muted); font-size: 0.8rem; }
+.media-empty span { font-size: 0.68rem; line-height: 1.4; }
+
+.loading-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--border-radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.loading-inline .loader { width: 16px; height: 16px; border-width: 2px; margin: 0; }
+.loading-inline small { width: 100%; color: var(--text-dark); font-size: 0.64rem; }
+
+/* --- Painel de propriedades --- */
+.props-empty {
+  color: var(--text-dark);
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 2rem 1rem;
+  line-height: 1.5;
+}
+
+.props-body { display: flex; flex-direction: column; gap: 0.9rem; }
+
+.props-headline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.props-headline strong {
+  font-size: 0.82rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.props-headline span { font-size: 0.66rem; color: var(--text-dark); }
+
+/* Cada grupo é um cartão próprio: sem separação visual, Recorte / Enquadramento
+   / Áudio viravam uma lista corrida e ficava difícil achar o que se procura. */
+.props-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-md);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.props-group h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: -0.15rem 0 0.1rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Marcador colorido por grupo, para bater o olho e achar a seção */
+.props-group h4::before {
+  content: '';
+  width: 3px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--accent-purple);
+}
+
+#group-framing h4::before { background: var(--accent-cyan); }
+#group-volume h4::before { background: var(--accent-pink); }
+
+.props-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.props-row label {
+  flex: 0 0 52px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.props-row .text-input { flex: 1; min-width: 0; }
+.props-unit { font-size: 0.7rem; color: var(--text-muted); }
+
+.props-hint {
+  font-size: 0.65rem;
+  line-height: 1.4;
+  color: var(--text-dark);
+}
+
+/* --- Monitor --- */
+.monitor {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--bg-primary);
+  padding: 0.9rem;
+  gap: 0.6rem;
+}
+
+.monitor-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.monitor-caption {
+  flex: 0 0 auto;
+  font-size: 0.64rem;
+  color: var(--text-dark);
+}
+
+.overlay-layers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.overlay-item {
+  position: absolute;
+  object-fit: fill;
+}
+
+.monitor-controls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-md);
+  padding: 0.4rem 0.7rem;
+}
+
+.transport, .monitor-audio {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.monitor-time {
+  font-family: monospace;
+  font-size: 0.76rem;
+  color: var(--text-main);
+}
+
+.monitor-time-sep { color: var(--text-dark); margin: 0 0.2rem; }
+
+.header-export {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.78rem;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: auto;
+}
+
+/* Barra de ferramentas da linha do tempo */
+.tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  border-radius: var(--border-radius-sm);
+  padding: 0.35rem 0.6rem;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.tool-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.tool-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.tool-btn.danger:hover:not(:disabled) { background: rgba(236, 72, 153, 0.25); color: #fff; }
+
+.toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--glass-border);
+  margin: 0 0.2rem;
+}
+
+.editor-shell > .timeline-section { height: 250px; }
+
+/* ==========================================================================
+   CORREÇÕES DE LAYOUT
+   ========================================================================== */
+
+/* A linha do tempo pode ficar MUITO larga (item solto lá na frente). Sem uma
+   coluna limitada, essa largura vazava para o grid e empurrava a barra de
+   ferramentas para fora da tela. */
+.editor-shell { grid-template-columns: minmax(0, 1fr); }
+.editor-shell > .timeline-section,
+.editor-top { min-width: 0; }
+.timeline-section { min-width: 0; overflow: hidden; }
+.timeline-body { min-width: 0; }
+.timeline-toolbar { min-width: 0; }
+.timeline-toolbar-group { flex-wrap: wrap; }
+
+/* O resumo da exportação cresce conforme a montagem (trechos, fotos,
+   sobreposições, trilhas): precisa quebrar linha em vez de transbordar. */
+.export-summary { flex-wrap: wrap; row-gap: 0.3rem; }
+
+/* Botões de reordenar faixa */
+.track-order {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 0 0 auto;
+}
+
+.track-order button {
+  width: 16px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.5rem;
+  line-height: 1;
+  transition: var(--transition-smooth);
+}
+
+.track-order button:hover:not(:disabled) { background: rgba(139, 92, 246, 0.4); color: #fff; }
+.track-order button:disabled { opacity: 0.25; cursor: not-allowed; }
+
+/* Vários trechos selecionados ao mesmo tempo */
+.tl-item.selected.multi { box-shadow: 0 0 0 1px var(--accent-cyan), 0 4px 14px rgba(0, 0, 0, 0.45); }
+
+.props-multi {
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--border-radius-sm);
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  color: #67e8f9;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* Controle de zoom da linha do tempo: era um slider minúsculo, difícil de
+   acertar. Agora tem passo por botão, leitura do valor e "Ajustar". */
+.timeline-zoom {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.timeline-zoom input[type="range"] {
+  width: 132px;
+  accent-color: var(--accent-purple);
+}
+
+.timeline-zoom .zoom-readout {
+  min-width: 30px;
+  font-size: 0.66rem;
+}
+
+/* Campo de renomear a faixa, no lugar do nome */
+.track-rename {
+  flex: 1;
+  min-width: 0;
+  padding: 0.15rem 0.3rem;
+  border: 1px solid var(--accent-purple);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.track-rename:focus { outline: none; }
+
+/* Dica de que o nome é renomeável */
+.track-name { cursor: text; }
+
+/* Linha do nome da faixa no painel de edição */
+.props-track-row { margin-bottom: 0.1rem; }
+.props-track-row label { flex: 0 0 42px; }
+
+/* Títulos de seção no modal de atalhos */
+.shortcuts-heading {
+  grid-column: 1 / -1;
+  margin-top: 0.55rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--accent-purple);
+}
+
+.shortcuts-heading:first-child { margin-top: 0; }
+
+/* Marca da transição na emenda entre dois trechos */
+.tl-transition {
+  position: absolute;
+  top: 4px;
+  height: 38px;
+  z-index: 3;
+  border-radius: 4px;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.35),
+    rgba(255, 255, 255, 0.35) 4px,
+    rgba(255, 255, 255, 0.08) 4px,
+    rgba(255, 255, 255, 0.08) 8px
+  );
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.tl-transition:hover { border-color: #fff; }
+
+/* Camada de trás (trecho que sai numa transição) e véu preto/branco */
+#video-b-element, #image-b-element {
+  position: absolute;
+  object-fit: fill;
+  user-select: none;
+}
+
+.transition-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* A camada da frente é desenhada sobre a de trás */
+#video-element, #image-element { z-index: 1; }
+
+/* --- Ajustes do trecho --- */
+.props-sublabel {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--text-dark);
+  text-transform: uppercase;
+}
+
+.props-row label.props-mini {
+  flex: 0 0 66px;
+  font-size: 0.66rem;
+}
+
+/* Botão em estado ligado (espelhar, chroma, marcar região) */
+.chip-btn.active {
+  background: rgba(139, 92, 246, 0.28);
+  border-color: var(--accent-purple);
+  color: #fff;
+}
+
+/* Região marcada para borrar, desenhada sobre o monitor */
+.blur-region-box {
+  position: absolute;
+  z-index: 3;
+  border: 1px dashed rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+}
+
+/* Enquanto espera o desenho da região */
+.media-frame.arming-blur {
+  cursor: crosshair;
+  box-shadow: inset 0 0 0 2px var(--accent-purple);
+}
+
+#group-adjust h4::before { background: #f59e0b; }
+
+/* --- Projeto (.cutting) --- */
+
+/* Nome do projeto ao lado do título "Editor" */
+.project-name {
+  margin-left: 0.5rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: var(--border-radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  vertical-align: middle;
+}
+
+/* O ponto indica trabalho ainda não salvo */
+.project-name.dirty {
+  color: var(--accent-cyan);
+  background: rgba(34, 211, 238, 0.12);
+}
+
+/* Recado passageiro ("Projeto salvo em…") */
+.project-status {
+  margin-left: 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--accent-cyan);
+  vertical-align: middle;
+}
+
+/* Terceiro botão do modal de confirmação: salvar em vez de escolher entre
+   perder o trabalho e desistir de sair. */
+.secondary-btn {
+  background: rgba(34, 211, 238, 0.14);
+  border: 1px solid var(--accent-cyan);
+  color: #fff;
+  border-radius: var(--border-radius-sm);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.secondary-btn:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.26);
+}
+
+/* --- Onda sonora nos blocos --- */
+
+/* Fica atrás do rótulo; o clique continua indo para o bloco (gestos de mover
+   e aparar dependem disso). */
+.tl-item-wave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2px;
+  width: 100%;
+  height: 22px;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* Em faixa de áudio a onda é o conteúdo, não um detalhe */
+.tl-item-wave.wave-audio {
+  top: 2px;
+  bottom: 2px;
+  height: auto;
+}
+
+/* Bloco silenciado: a onda some junto com o som */
+.tl-item.muted .tl-item-wave {
+  opacity: 0.25;
+}
+
+/* --- Isolar faixa (solo) --- */
+.track-solo {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  border-radius: var(--border-radius-sm);
+  width: 20px;
+  height: 20px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: var(--transition-smooth);
+}
+
+.track-solo:hover {
+  color: #fff;
+  border-color: var(--accent-cyan);
+}
+
+.track-solo.on {
+  background: rgba(250, 204, 21, 0.22);
+  border-color: #facc15;
+  color: #facc15;
+}
+
+/* Caixa de seleção nas propriedades (normalizar volume) */
+.props-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  color: var(--text-dark);
+  cursor: pointer;
+}
+
+.props-check input {
+  accent-color: var(--accent-purple);
+  cursor: pointer;
+}
+
+/* --- Títulos e legendas --- */
+
+/* Pista de texto: mais baixa que uma faixa, porque o bloco só carrega um
+   rótulo — e ela fica acima de tudo, como o texto no vídeo. */
+.text-lane {
+  position: relative;
+  height: 26px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-repeat: repeat-x;
+}
+
+.text-lane-header {
+  height: 26px;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: var(--accent-cyan);
+  background: rgba(34, 211, 238, 0.07);
+}
+
+.tl-text {
+  position: absolute;
+  top: 3px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1px solid rgba(34, 211, 238, 0.5);
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.5), rgba(34, 211, 238, 0.3));
+  color: #fff;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  min-width: 8px;
+}
+
+.tl-text.selected {
+  border-color: #fff;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+.tl-text-label {
+  flex: 1;
+  padding: 0 0.35rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* Camada dos textos no monitor */
+.text-overlays {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Cada texto é posicionado pelo CENTRO, a mesma referência do drawtext */
+.text-overlay {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  max-width: 92%;
+  text-align: center;
+  line-height: 1.2;
+  white-space: pre-wrap;
+  pointer-events: auto;
+  cursor: move;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.text-overlay.selected {
+  outline: 1px dashed rgba(255, 255, 255, 0.75);
+  outline-offset: 3px;
+}
+
+.text-area {
+  width: 100%;
+  resize: vertical;
+  min-height: 42px;
+  font-family: inherit;
+}
+
+.danger-chip {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+.danger-chip:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #ef4444;
+  color: #fff;
+}
+
+/* --- Altura ajustável da linha do tempo --- */
+
+/* Barra de arraste entre o monitor e as faixas. Fica fina para não roubar
+   espaço, mas com área de clique confortável graças ao padding. */
+.timeline-resizer {
+  flex: 0 0 auto;
+  height: 9px;
+  margin-top: -1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ns-resize;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.timeline-resizer:hover,
+.timeline-resizer.dragging {
+  background: rgba(139, 92, 246, 0.18);
+}
+
+/* Marquinha central: sinaliza que dá para arrastar */
+.timeline-resizer-grip {
+  width: 46px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.timeline-resizer:hover .timeline-resizer-grip,
+.timeline-resizer.dragging .timeline-resizer-grip {
+  background: var(--accent-purple);
+}
+
+/* Durante o arraste, nada de selecionar texto nem trocar o cursor por cima
+   dos elementos que passam sob o ponteiro. */
+body.resizing-timeline {
+  cursor: ns-resize;
+  user-select: none;
+}
+
+/* O canto da coluna de nomes acompanha a régua, que é fixa no topo. Sem isto,
+   ao rolar as faixas na vertical o canto subia junto e os nomes saíam
+   desalinhados das faixas por 22px. */
+.ruler-corner {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bg-secondary);
+}
+
+/* --- Ordem de pintura do monitor --- */
+/*
+   Definida em um lugar só, porque z-index vence a ordem do DOM: a mídia da
+   faixa base tinha z-index 1 e as sobreposições nenhum, então a base pintava
+   POR CIMA de todas elas — o oposto do que sai no arquivo exportado.
+
+     1  mídia da faixa base
+     2  véu da transição (faz parte do efeito sobre a base)
+     3  faixas de cima, na ordem da lista
+     4  base ERGUIDA (só na prévia, quando o trecho dela está selecionado)
+     5  títulos e legendas — por cima de tudo, como no vídeo
+     6  retângulo do borrão: guia de edição, sempre visível
+*/
+#video-element, #image-element { z-index: 1; }
+.transition-veil { z-index: 2; }
+.overlay-layers { z-index: 3; }
+
+/* Prévia: o trecho selecionado vem para a frente para poder ser editado mesmo
+   quando outra faixa o cobriria. Não muda o arquivo exportado. */
+.media-frame.base-em-foco #video-element,
+.media-frame.base-em-foco #image-element { z-index: 4; }
+
+.text-overlays { z-index: 5; }
+.blur-region-box { z-index: 6; }
+
+/* Contorno discreto no que está em foco na prévia, para ficar claro POR QUE
+   aquele trecho está na frente. */
+.overlay-item.em-foco {
+  outline: 1px dashed rgba(255, 255, 255, 0.55);
+  outline-offset: -1px;
+}

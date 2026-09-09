@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cutting - Editor de Vídeo Premium</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Background decorativo brilhante -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <!-- CONTAINER PRINCIPAL -->
+  <div class="app-container">
+
+    <!--
+      1. TELA DE MENU INICIAL
+      Funciona como ponto de partida: o que dá para fazer (as três ações) e de
+      onde continuar (os projetos recentes). Ocupa a largura da janela em vez
+      de espremer tudo numa coluna estreita no meio da tela.
+    -->
+    <div id="home-screen" class="screen active">
+      <div class="home-shell">
+
+        <header class="home-brand">
+          <span class="home-logo">
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="#fff" aria-hidden="true">
+              <path d="M7 22H9C10.1 22 11 21.1 11 20V13H7C5.9 13 5 13.9 5 15V20C5 21.1 5.9 22 7 22Z"/>
+              <path d="M17 22H15C13.9 22 13 21.1 13 20V13H17C18.1 13 19 13.9 19 15V20C19 21.1 18.1 22 17 22Z"/>
+              <path d="M11 11V4C11 2.9 10.1 2 9 2H7C5.9 2 5 2.9 5 4V11H11Z"/>
+              <path d="M13 11V4C13 2.9 13.9 2 15 2H17C18.1 2 19 2.9 19 4V11H13Z"/>
+              <circle cx="12" cy="12" r="1.7"/>
+            </svg>
+          </span>
+          <div class="home-brand-text">
+            <h1 class="app-title">Cutting</h1>
+            <p class="app-subtitle">Corte, monte e exporte vídeo no seu computador — sem nuvem, sem marca d'água.</p>
+          </div>
+        </header>
+
+        <div class="home-actions">
+          <button id="btn-menu-cut" class="home-card destaque">
+            <span class="home-card-icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M9.64 7.64a3 3 0 10-2.83 2.83L9 12l-2.19 1.53a3 3 0 102.83 2.83L12 14l7 5h3v-1L9.64 7.64zM6 8a1 1 0 111-1 1 1 0 01-1 1zm0 11a1 1 0 111-1 1 1 0 01-1 1zm13-14l-7 5 2.11 1.5L22 6V5h-3z"/>
+              </svg>
+            </span>
+            <span class="home-card-title">Recortar e Montar</span>
+            <span class="home-card-desc">
+              Faixas, transições, áudio, legendas e efeitos. O editor completo.
+            </span>
+            <span class="home-card-go">Começar uma montagem →</span>
+          </button>
+
+          <button id="btn-menu-merge" class="home-card">
+            <span class="home-card-icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M17 20.41L18.41 19 15 15.59 13.59 17 17 20.41zM7.5 8H11v5.59L5.59 19 7 20.41l6-6V8h3.5L12 3.5 7.5 8z"/>
+              </svg>
+            </span>
+            <span class="home-card-title">Mesclar Vídeos</span>
+            <span class="home-card-desc">
+              Junta arquivos inteiros num só, sem recortar nada.
+            </span>
+            <span class="home-card-go">Juntar arquivos →</span>
+          </button>
+
+          <button id="btn-menu-open" class="home-card">
+            <span class="home-card-icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+              </svg>
+            </span>
+            <span class="home-card-title">Abrir Projeto</span>
+            <span class="home-card-desc">
+              Continua uma montagem salva em arquivo <code>.cutting</code>.
+            </span>
+            <span class="home-card-go">Escolher arquivo →</span>
+          </button>
+        </div>
+
+        <section class="home-recent" id="home-recent">
+          <h2 class="home-section-title">Projetos recentes</h2>
+          <div class="recent-list" id="recent-list"></div>
+          <p class="recent-empty" id="recent-empty">
+            Nenhum projeto salvo ainda. Ao salvar uma montagem com
+            <span class="kbd-inline">Ctrl+S</span>, ela aparece aqui.
+          </p>
+        </section>
+
+        <footer class="home-footer">
+          <span class="home-tags">
+            faixas sobrepostas · transições · chroma key · títulos e legendas · normalizar áudio
+          </span>
+          <span class="version-tag">v4.4.0 · Desenvolvido por Lucas Gulich</span>
+        </footer>
+
+      </div>
+    </div>
+
+    <!-- 2. TELA DE EDIÇÃO (Cut Screen) -->
+    <!--
+      Layout no padrão dos editores (Filmora, Premiere, CapCut):
+
+        ┌ biblioteca ┬ monitor ─────────┐   em cima
+        ├────────────┴──────────────────┤
+        │ ferramentas + linha do tempo  │   embaixo, largura toda
+        └───────────────────────────────┘
+
+      O fluxo é: importar → arrastar da biblioteca para uma faixa → selecionar
+      o trecho na linha do tempo → editar no painel da esquerda. O monitor
+      mostra a MONTAGEM na posição da agulha, não a mídia isolada.
+    -->
+    <div id="cut-screen" class="screen">
+
+      <header class="screen-header">
+        <div class="header-left">
+          <button id="btn-back-home" class="back-btn">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+            </svg>
+            Voltar ao Menu
+          </button>
+        </div>
+        <div class="header-title">
+          Editor
+          <span class="project-name" id="project-name" title="Projeto aberto">Sem projeto</span>
+          <span class="project-status hidden" id="project-status"></span>
+        </div>
+        <div class="header-right">
+          <button id="btn-project-open" class="header-action" title="Abrir um projeto salvo (Ctrl+O)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+            </svg>
+            Abrir
+          </button>
+          <button id="btn-project-save" class="header-action" title="Salvar o projeto (Ctrl+S)">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/>
+            </svg>
+            Salvar
+          </button>
+          <button id="btn-shortcuts" class="header-action" title="Ver atalhos de teclado">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/>
+            </svg>
+            Atalhos
+          </button>
+          <button id="btn-open-export" class="export-btn-primary header-export" disabled>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+            </svg>
+            Exportar
+          </button>
+        </div>
+      </header>
+
+      <div class="editor-shell" id="editor-shell">
+
+        <!-- ================= LINHA DE CIMA ================= -->
+        <div class="editor-top">
+
+          <!-- ---------- ESQUERDA: biblioteca / propriedades ---------- -->
+          <section class="left-dock">
+            <div class="dock-tabs">
+              <button class="dock-tab active" id="tab-media">Mídias</button>
+              <button class="dock-tab" id="tab-props" disabled>Editar Trecho</button>
+            </div>
+
+            <!-- Aba 1: biblioteca de mídias -->
+            <div class="dock-panel" id="panel-media">
+              <div class="media-import-row">
+                <button id="btn-select-video" class="chip-btn">+ Vídeos</button>
+                <button id="btn-select-image" class="chip-btn">+ Fotos</button>
+                <button id="btn-add-audio-source" class="chip-btn">+ Áudio</button>
+              </div>
+
+              <div class="media-grid" id="media-grid">
+                <!-- Miniaturas via JS -->
+              </div>
+
+              <div class="media-empty" id="media-empty">
+                <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.4">
+                  <path d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5h10.5a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0017.25 4.5H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25z" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <strong>Arraste arquivos para cá</strong>
+                <span>Vídeos, fotos e áudio. Depois arraste da lista para uma faixa da linha do tempo.</span>
+              </div>
+
+              <div id="loading-preview" class="loading-inline hidden">
+                <div class="loader"></div>
+                <span id="loading-title">Analisando mídias...</span>
+                <small id="loading-subtitle"></small>
+              </div>
+            </div>
+
+            <!-- Aba 2: propriedades do trecho selecionado -->
+            <div class="dock-panel hidden" id="panel-props">
+              <div class="props-empty" id="props-empty">
+                Selecione um trecho na linha do tempo para editar.
+              </div>
+
+              <div class="props-body hidden" id="props-body">
+                <div class="props-headline" id="props-headline"></div>
+
+                <div class="props-row props-track-row" id="row-clip-name">
+                  <label for="input-clip-name">Nome</label>
+                  <input type="text" id="input-clip-name" class="text-input"
+                         maxlength="60" title="Renomear este trecho (F2)">
+                </div>
+
+                <!-- Recorte -->
+                <div class="props-group" id="group-trim">
+                  <h4>Recorte</h4>
+                  <div class="props-row">
+                    <label for="input-clip-in">Início</label>
+                    <input type="text" id="input-clip-in" class="text-input" value="00:00:00.000">
+                    <button class="micro-btn" id="btn-clip-in-here" title="Usar a posição da agulha">⇤</button>
+                  </div>
+                  <div class="props-row">
+                    <label for="input-clip-out">Fim</label>
+                    <input type="text" id="input-clip-out" class="text-input" value="00:00:00.000">
+                    <button class="micro-btn" id="btn-clip-out-here" title="Usar a posição da agulha">⇥</button>
+                  </div>
+                  <div class="props-row" id="row-clip-duration">
+                    <label for="input-clip-duration">Duração</label>
+                    <input type="number" id="input-clip-duration" class="text-input"
+                           min="0.1" max="600" step="0.5" value="5">
+                    <span class="props-unit">seg</span>
+                  </div>
+                  <div class="duration-presets" id="duration-presets">
+                    <button class="chip-btn" data-seconds="2">2s</button>
+                    <button class="chip-btn" data-seconds="3">3s</button>
+                    <button class="chip-btn" data-seconds="5">5s</button>
+                    <button class="chip-btn" data-seconds="10">10s</button>
+                  </div>
+                </div>
+
+                <!-- Transição de entrada -->
+                <div class="props-group" id="group-transition">
+                  <h4>Transição de entrada</h4>
+                  <div class="props-row">
+                    <label for="select-transition">Efeito</label>
+                    <select id="select-transition" class="select-input"></select>
+                  </div>
+                  <div class="props-row">
+                    <label for="input-transition-duration">Duração</label>
+                    <input type="number" id="input-transition-duration" class="text-input"
+                           min="0" max="10" step="0.1" value="0">
+                    <span class="props-unit">seg</span>
+                  </div>
+                  <p class="props-hint" id="transition-hint">
+                    A transição sobrepõe este trecho ao anterior, então a montagem
+                    encurta pelo tempo dela. Duração 0 = corte seco.
+                  </p>
+                </div>
+
+                <!-- Enquadramento -->
+                <div class="props-group" id="group-framing">
+                  <h4>Enquadramento e fundo</h4>
+                  <div class="zoom-row">
+                    <button class="micro-btn" id="btn-zoom-out" title="Afastar">−</button>
+                    <input type="range" id="input-image-zoom" class="zoom-slider"
+                           min="10" max="500" step="1" value="100">
+                    <button class="micro-btn" id="btn-zoom-in" title="Aproximar">+</button>
+                    <span class="zoom-readout" id="zoom-readout">100%</span>
+                  </div>
+                  <div class="duration-presets">
+                    <button class="chip-btn" id="btn-fit-image">Encaixar</button>
+                    <button class="chip-btn" id="btn-fill-image">Preencher</button>
+                    <button class="chip-btn" id="btn-reset-framing">Centralizar</button>
+                  </div>
+
+                  <div class="segmented segmented-compact" id="segmented-background">
+                    <label class="segment">
+                      <input type="radio" name="bg-mode" value="color" checked>
+                      <span>Cor</span>
+                    </label>
+                    <label class="segment">
+                      <input type="radio" name="bg-mode" value="blur">
+                      <span id="blur-option-label">Desfoque</span>
+                    </label>
+                  </div>
+                  <div class="bg-color-row" id="bg-color-row">
+                    <input type="color" id="input-bg-color" value="#000000" title="Cor do fundo">
+                    <div class="color-swatches" id="color-swatches">
+                      <button class="swatch" data-color="#000000" style="background:#000000" title="Preto"></button>
+                      <button class="swatch" data-color="#ffffff" style="background:#ffffff" title="Branco"></button>
+                      <button class="swatch" data-color="#111827" style="background:#111827" title="Grafite"></button>
+                      <button class="swatch" data-color="#8b5cf6" style="background:#8b5cf6" title="Violeta"></button>
+                    </div>
+                    <button class="chip-btn" id="btn-pick-from-image" title="Cor predominante da própria mídia">
+                      Tirar da mídia
+                    </button>
+                  </div>
+                  <p class="props-hint">
+                    Arraste a mídia no monitor para reposicionar e role o mouse para dar zoom.
+                  </p>
+                </div>
+
+                <!-- Ajustes da imagem -->
+                <div class="props-group" id="group-adjust">
+                  <h4>Ajustes</h4>
+
+                  <div class="props-row">
+                    <label for="input-speed">Velocidade</label>
+                    <input type="number" id="input-speed" class="text-input"
+                           min="0.1" max="10" step="0.05" value="1">
+                    <span class="props-unit">x</span>
+                  </div>
+                  <div class="duration-presets" id="speed-presets">
+                    <button class="chip-btn" data-speed="0.25">0,25x</button>
+                    <button class="chip-btn" data-speed="0.5">0,5x</button>
+                    <button class="chip-btn" data-speed="1">1x</button>
+                    <button class="chip-btn" data-speed="2">2x</button>
+                    <button class="chip-btn" data-speed="4">4x</button>
+                  </div>
+                  <span class="props-hint" id="speed-hint"></span>
+
+                  <div class="props-row">
+                    <label for="input-opacity">Opacidade</label>
+                    <input type="range" id="input-opacity" class="zoom-slider"
+                           min="0" max="100" step="1" value="100">
+                    <span class="zoom-readout" id="opacity-readout">100%</span>
+                  </div>
+
+                  <label class="props-sublabel">Girar e espelhar</label>
+                  <div class="duration-presets">
+                    <button class="chip-btn" id="btn-rotate-left" title="Girar 90° à esquerda">↺ 90°</button>
+                    <button class="chip-btn" id="btn-rotate-right" title="Girar 90° à direita">↻ 90°</button>
+                    <button class="chip-btn" id="btn-flip-h" title="Espelhar na horizontal">⇄</button>
+                    <button class="chip-btn" id="btn-flip-v" title="Espelhar na vertical">⇅</button>
+                  </div>
+
+                  <label class="props-sublabel">Cor</label>
+                  <div class="props-row">
+                    <label for="input-brightness" class="props-mini">Brilho</label>
+                    <input type="range" id="input-brightness" class="zoom-slider" min="-50" max="50" value="0">
+                    <span class="zoom-readout" id="brightness-readout">0</span>
+                  </div>
+                  <div class="props-row">
+                    <label for="input-contrast" class="props-mini">Contraste</label>
+                    <input type="range" id="input-contrast" class="zoom-slider" min="0" max="200" value="100">
+                    <span class="zoom-readout" id="contrast-readout">100</span>
+                  </div>
+                  <div class="props-row">
+                    <label for="input-saturation" class="props-mini">Saturação</label>
+                    <input type="range" id="input-saturation" class="zoom-slider" min="0" max="200" value="100">
+                    <span class="zoom-readout" id="saturation-readout">100</span>
+                  </div>
+                  <button class="chip-btn" id="btn-reset-color">Voltar ao original</button>
+
+                  <label class="props-sublabel">Fundo verde (chroma key)</label>
+                  <div class="bg-color-row">
+                    <input type="color" id="input-chroma-color" value="#00ff00" title="Cor a remover">
+                    <button class="chip-btn" id="btn-chroma-toggle">Ativar</button>
+                    <button class="chip-btn" id="btn-chroma-pick" title="Usar a cor predominante da mídia">Tirar da mídia</button>
+                  </div>
+                  <div class="props-row hidden" id="row-chroma-similarity">
+                    <label for="input-chroma-similarity" class="props-mini">Tolerância</label>
+                    <input type="range" id="input-chroma-similarity" class="zoom-slider" min="1" max="60" value="30">
+                    <span class="zoom-readout" id="chroma-similarity-readout">30</span>
+                  </div>
+                  <span class="props-hint">
+                    Remove o fundo da cor escolhida. O que estiver na faixa de baixo aparece no lugar.
+                    O monitor não consegue mostrar esse efeito — ele aparece no vídeo exportado.
+                  </span>
+
+                  <label class="props-sublabel">Borrar uma região</label>
+                  <div class="duration-presets">
+                    <button class="chip-btn" id="btn-blur-region">Marcar no monitor</button>
+                    <button class="chip-btn" id="btn-blur-clear">Remover</button>
+                  </div>
+                  <span class="props-hint" id="blur-hint">
+                    Para tapar rosto, placa ou documento. Clique e arraste sobre o monitor.
+                  </span>
+                </div>
+
+                <!-- Título / legenda selecionado na pista de texto -->
+                <div class="props-group hidden" id="group-text">
+                  <h4>Texto</h4>
+
+                  <textarea id="input-text-content" class="text-input text-area"
+                            rows="2" placeholder="Escreva aqui"></textarea>
+
+                  <div class="props-row">
+                    <label for="input-text-start">Entra em</label>
+                    <input type="text" id="input-text-start" class="text-input" placeholder="00:00">
+                  </div>
+                  <div class="props-row">
+                    <label for="input-text-duration">Dura</label>
+                    <input type="number" id="input-text-duration" class="text-input"
+                           min="0.3" step="0.5" value="3">
+                    <span class="props-unit">s</span>
+                  </div>
+
+                  <div class="props-row">
+                    <label for="input-text-size">Tamanho</label>
+                    <input type="range" id="input-text-size" class="zoom-slider" min="2" max="30" value="11">
+                    <span class="zoom-readout" id="text-size-readout">11%</span>
+                  </div>
+
+                  <div class="bg-color-row">
+                    <input type="color" id="input-text-color" value="#ffffff" title="Cor do texto">
+                    <button class="chip-btn" id="btn-text-bold" title="Negrito">N</button>
+                    <button class="chip-btn" id="btn-text-outline" title="Contorno escuro (ajuda a ler sobre fundo claro)">Contorno</button>
+                  </div>
+
+                  <div class="props-row">
+                    <label class="props-check" for="input-text-bg">
+                      <input type="checkbox" id="input-text-bg">
+                      <span>Tarja atrás do texto</span>
+                    </label>
+                  </div>
+                  <div class="props-row hidden" id="row-text-bg">
+                    <input type="color" id="input-text-bg-color" value="#000000" title="Cor da tarja">
+                    <input type="range" id="input-text-bg-opacity" class="zoom-slider" min="0" max="100" value="55">
+                    <span class="zoom-readout" id="text-bg-opacity-readout">55%</span>
+                  </div>
+
+                  <span class="props-hint" id="text-position-hint"></span>
+                  <button class="chip-btn danger-chip" id="btn-text-remove">Remover texto</button>
+                </div>
+
+                <!-- Áudio -->
+                <div class="props-group" id="group-volume">
+                  <h4>Áudio</h4>
+                  <div class="volume-row">
+                    <button class="micro-btn" id="btn-item-mute" title="Silenciar este trecho">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+                      </svg>
+                    </button>
+                    <input type="range" id="input-item-volume" class="zoom-slider"
+                           min="0" max="200" step="1" value="100">
+                    <span class="zoom-readout" id="item-volume-readout">100%</span>
+                  </div>
+                  <span class="props-hint" id="item-volume-hint">Vale só para este trecho.</span>
+
+                  <div class="props-row">
+                    <label class="props-check" for="input-normalize">
+                      <input type="checkbox" id="input-normalize">
+                      <span>Normalizar volume</span>
+                    </label>
+                  </div>
+                  <span class="props-hint">
+                    Leva este trecho ao mesmo nível dos demais (padrão das plataformas de vídeo).
+                    Útil quando um trecho ficou muito mais baixo ou mais alto que o resto.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ---------- DIREITA: monitor da montagem ---------- -->
+          <section class="monitor">
+            <div class="monitor-stage" id="media-stage">
+              <div class="media-frame" id="media-frame">
+                <div class="media-frame-bg" id="media-frame-bg"></div>
+                <!-- Fundo desfocado de VÍDEO precisa ser um <video> de verdade:
+                     CSS não renderiza arquivo de vídeo como background-image -->
+                <video id="video-bg-element" class="media-frame-bg-video hidden"
+                       muted playsinline preload="auto"></video>
+                <!-- Camada do trecho que SAI durante uma transição. Fica atrás
+                     da principal; o efeito é aplicado sobre a de cima. -->
+                <video id="video-b-element" class="hidden" muted playsinline preload="auto"></video>
+                <img id="image-b-element" class="hidden" alt="" draggable="false">
+
+                <video id="video-element" preload="auto"></video>
+                <img id="image-element" class="hidden" alt="" draggable="false">
+                <!-- Véu usado nas transições que passam pelo preto ou branco -->
+                <div id="transition-veil" class="transition-veil hidden"></div>
+                <!-- Região marcada para borrar -->
+                <div id="blur-region-box" class="blur-region-box hidden"></div>
+                <!-- Camadas das faixas de cima, desenhadas por JS -->
+                <div class="overlay-layers" id="overlay-layers"></div>
+                <!-- Títulos e legendas: acima de tudo, como saem no vídeo -->
+                <div class="text-overlays" id="text-overlays"></div>
+              </div>
+              <div class="monitor-caption" id="media-frame-caption"></div>
+            </div>
+
+            <div class="monitor-controls">
+              <div class="transport">
+                <button id="btn-go-start" class="control-btn" title="Ir para o início (Home)">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/>
+                  </svg>
+                </button>
+                <button id="btn-frame-back" class="control-btn" title="1 frame atrás (←)">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6z"/>
+                  </svg>
+                </button>
+                <button id="btn-play-pause" class="control-btn play-btn" title="Reproduzir / Pausar (Espaço)">
+                  <svg id="play-icon" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  <svg id="pause-icon" class="hidden" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                  </svg>
+                </button>
+                <button id="btn-frame-forward" class="control-btn" title="1 frame à frente (→)">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/>
+                  </svg>
+                </button>
+                <button id="btn-go-end" class="control-btn" title="Ir para o fim (End)">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M16 6h2v12h-2zm-1.5 6L6 6v12z"/>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="monitor-time">
+                <span id="time-current">00:00:00.000</span>
+                <span class="monitor-time-sep">/</span>
+                <span id="time-duration">00:00:00.000</span>
+              </div>
+
+              <div class="monitor-audio">
+                <button id="btn-mute" class="control-btn" title="Mudo (M)">
+                  <svg id="icon-volume" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+                  </svg>
+                  <svg id="icon-muted" class="hidden" viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                    <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zM19 12c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3z"/>
+                  </svg>
+                </button>
+                <input type="range" id="input-volume" class="volume-slider" min="0" max="100" value="100" title="Volume do monitor">
+                <select id="select-speed" class="speed-select" title="Velocidade">
+                  <option value="0.25">0.25x</option>
+                  <option value="0.5">0.5x</option>
+                  <option value="1" selected>1x</option>
+                  <option value="1.5">1.5x</option>
+                  <option value="2">2x</option>
+                  <option value="4">4x</option>
+                </select>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ================= LINHA DE BAIXO ================= -->
+        <section class="timeline-section" id="timeline-section">
+
+          <!-- Divisória: arraste para cima para ver mais faixas de uma vez.
+               Duplo clique volta à altura padrão. -->
+          <div class="timeline-resizer" id="timeline-resizer"
+               title="Arraste para mudar a altura da linha do tempo (duplo clique volta ao padrão)">
+            <span class="timeline-resizer-grip"></span>
+          </div>
+
+          <div class="timeline-toolbar">
+            <div class="timeline-toolbar-group">
+              <button class="tool-btn" id="btn-split" title="Dividir na agulha (S)" disabled>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                  <path d="M9.64 7.64a3 3 0 10-2.83 2.83L9 12l-2.19 1.53a3 3 0 102.83 2.83L12 14l7 5h3v-1L9.64 7.64zM6 8a1 1 0 111-1 1 1 0 01-1 1zm0 11a1 1 0 111-1 1 1 0 01-1 1zm13-14l-7 5 2.11 1.5L22 6V5h-3z"/>
+                </svg>
+                Dividir
+              </button>
+              <button class="tool-btn" id="btn-clip-duplicate" title="Duplicar" disabled>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                  <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                </svg>
+                Duplicar
+              </button>
+              <button class="tool-btn danger" id="btn-clip-delete" title="Excluir (Delete)" disabled>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                </svg>
+                Excluir
+              </button>
+              <span class="toolbar-divider"></span>
+              <span class="timeline-total">Duração <strong id="timeline-total">00:00:00.000</strong></span>
+            </div>
+
+            <div class="timeline-toolbar-group">
+              <button class="tool-btn" id="btn-undo" title="Desfazer (Ctrl+Z)" disabled>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                  <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/>
+                </svg>
+                Desfazer
+              </button>
+              <button class="tool-btn" id="btn-redo" title="Refazer (Ctrl+Y)" disabled>
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor">
+                  <path d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.06-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"/>
+                </svg>
+                Refazer
+              </button>
+              <span class="toolbar-divider"></span>
+              <button class="chip-btn" id="btn-add-video-track" title="Nova faixa de vídeo, acima das atuais">
+                + Faixa de vídeo
+              </button>
+              <button class="chip-btn" id="btn-add-audio-track" title="Nova faixa de áudio">
+                + Faixa de áudio
+              </button>
+              <span class="toolbar-divider"></span>
+              <button class="chip-btn" id="btn-add-title" title="Título grande no centro, a partir da agulha">
+                + Título
+              </button>
+              <button class="chip-btn" id="btn-add-subtitle" title="Legenda com tarja, na parte de baixo">
+                + Legenda
+              </button>
+              <div class="timeline-zoom" title="Zoom da linha do tempo">
+                <button class="micro-btn" id="btn-zoom-timeline-out" title="Afastar">−</button>
+                <input type="range" id="input-timeline-zoom" min="1" max="400" step="1" value="70">
+                <button class="micro-btn" id="btn-zoom-timeline-in" title="Aproximar">+</button>
+                <span class="zoom-readout" id="timeline-zoom-readout">70</span>
+                <button class="chip-btn" id="btn-zoom-fit" title="Enquadrar a montagem inteira">Ajustar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-body">
+            <div class="track-headers" id="track-headers">
+              <div class="ruler-corner"></div>
+            </div>
+
+            <div class="timeline-scroll" id="timeline-scroll">
+              <div class="timeline-inner" id="timeline-inner">
+                <div class="timeline-ruler" id="timeline-ruler"></div>
+                <!-- Pista de texto: fica acima das faixas porque o texto
+                     aparece por cima de tudo no vídeo -->
+                <div class="text-lane" id="text-lane"></div>
+                <div class="timeline-rows" id="timeline-rows"></div>
+                <div class="timeline-playhead-line" id="timeline-playhead-line"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-empty" id="timeline-empty">
+            Arraste uma mídia da lista da esquerda para uma faixa aqui embaixo.
+            Depois clique no trecho para editar, e arraste as bordas para aparar.
+          </div>
+        </section>
+      </div>
+
+    </div>
+
+    <!-- 3. TELA DE MESCLAGEM (Merge Screen) -->
+    <div id="merge-screen" class="screen">
+
+      <!-- Cabeçalho da tela -->
+      <header class="screen-header">
+        <div class="header-left">
+          <button id="btn-merge-back-home" class="back-btn">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+            </svg>
+            Voltar ao Menu
+          </button>
+        </div>
+        <div class="header-title">Mesclar Vídeos</div>
+        <div class="header-right"></div>
+      </header>
+
+      <!-- Layout de colunas para Mesclagem -->
+      <div class="editor-layout">
+
+        <!-- Coluna Esquerda: Player Sequencial -->
+        <main class="player-container-section">
+
+          <!-- Área de Drop / Seleção de Múltiplos Vídeos Inicial -->
+          <div id="merge-drop-zone" class="drop-zone-wrapper">
+            <div class="drop-zone-content">
+              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 10.5v6m0 0l-3-3m3 3l3-3M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 8.25V6zM3.75 15.75a2.25 2.25 0 012.25-2.25h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6z" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <h3>Importe os arquivos de vídeo</h3>
+              <p>Adicione dois ou mais vídeos na ordem desejada.</p>
+              <button id="btn-select-merge-videos" class="select-file-btn">Adicionar Vídeos</button>
+            </div>
+          </div>
+
+          <!-- Player de Vídeo para Mesclagem -->
+          <div id="merge-player-wrapper" class="player-wrapper hidden">
+            <div class="video-holder">
+              <video id="merge-video-element" preload="auto"></video>
+            </div>
+
+            <!-- Barra de Progresso Customizada do Vídeo Atual -->
+            <div class="timeline-area">
+              <div class="time-displays">
+                <span id="merge-current-video-title">Vídeo: -</span>
+                <span id="merge-time-display">00:00:00 / 00:00:00</span>
+              </div>
+
+              <div class="timeline-track-container" id="merge-timeline-container">
+                <div class="timeline-progress-bar" id="merge-timeline-progress-bar"></div>
+                <div class="timeline-playhead" id="merge-timeline-playhead"></div>
+              </div>
+            </div>
+
+            <!-- Controles do Player de Mesclagem -->
+            <div class="controls-panel">
+              <div class="player-controls">
+                <button id="btn-merge-rewind" class="control-btn" title="Voltar 5s">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+                  </svg>
+                </button>
+                <button id="btn-merge-play-pause" class="control-btn play-btn" title="Reproduzir / Pausar">
+                  <svg id="merge-play-icon" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  <svg id="merge-pause-icon" class="hidden" viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                  </svg>
+                </button>
+                <button id="btn-merge-forward" class="control-btn" title="Avançar 5s">
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                    <path d="M12 5c-4.42 0-8 3.58-8 8s3.58 8 8 8 8-3.58 8-8h-2c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6v4l5-5-5-5z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </main>
+
+        <!-- Coluna Direita: Lista de Mesclagem e Pasta de Destino -->
+        <aside class="sidebar-section">
+
+          <!-- Lista de Vídeos para Mesclar -->
+          <div class="card cuts-list-card">
+            <div class="card-header-row">
+              <h3>Ordem de Mesclagem</h3>
+              <span class="badge" id="merge-videos-counter">0</span>
+            </div>
+
+            <div class="list-container" id="merge-list-placeholder">
+              <div class="empty-cuts-message">
+                Nenhum vídeo adicionado ainda.<br>Clique em "Adicionar Vídeos" para importar os arquivos.
+              </div>
+            </div>
+
+            <div class="list-container hidden" id="merge-list">
+              <!-- Inserido dinamicamente via JS -->
+            </div>
+
+            <button id="btn-merge-add-more" class="change-video-btn hidden">+ Adicionar Mais Vídeos</button>
+          </div>
+
+          <!-- Ação principal: abre o modal de exportação -->
+          <button id="btn-open-merge-export" class="export-btn-primary sidebar-cta" disabled>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+            </svg>
+            Mesclar e Salvar
+          </button>
+
+        </aside>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- MODAL DE EXPORTAÇÃO (TELA DE CORTE) -->
+  <div class="modal-overlay hidden" id="export-modal">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <h3 id="export-modal-title">Cortar e Salvar</h3>
+        <button class="modal-close" id="btn-close-export-modal" title="Fechar">×</button>
+      </div>
+
+      <!-- Etapa 1: configuração -->
+      <div id="export-step-form">
+        <div class="export-summary" id="export-summary">
+          <!-- Preenchido via JS: nº de trechos e duração total -->
+        </div>
+
+        <div class="field-group">
+          <label for="output-path-display">Pasta de Destino</label>
+          <div class="input-action-group">
+            <input type="text" id="output-path-display" placeholder="Selecione onde salvar..." readonly>
+            <button id="btn-select-output" class="btn-icon-select" title="Escolher pasta">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V6h5.17l2 2H20v10z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="input-output-name">Nome do Arquivo</label>
+          <input type="text" id="input-output-name" class="text-input" placeholder="meu_video" maxlength="120">
+          <span class="field-hint" id="output-name-hint">Será salvo como <code>meu_video_1.mp4</code>, <code>meu_video_2.mp4</code>…</span>
+        </div>
+
+        <div class="field-group">
+          <label for="select-join-mode">Salvar Como</label>
+          <!-- Vídeo único é o padrão: é o que se espera de uma montagem.
+               Arquivos separados continua disponível para quem quer os
+               trechos avulsos. -->
+          <select id="select-join-mode" class="select-input">
+            <option value="merged" selected>Vídeo único (a montagem inteira)</option>
+            <option value="separate">Arquivos separados (um por trecho)</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label for="select-output-format">Formato de Saída</label>
+          <!-- As opções são geradas pelo JS a partir de OUTPUT_FORMATS -->
+          <select id="select-output-format" class="select-input"></select>
+          <span class="field-hint" id="output-format-hint">Mantém a proporção e a resolução originais.</span>
+
+          <!-- Só faz sentido com um formato escolhido -->
+          <div class="fit-choice hidden" id="fit-choice">
+            <span class="fit-choice-label">Ajuste</span>
+            <div class="segmented" id="segmented-fit">
+              <label class="segment">
+                <input type="radio" name="fit-mode" value="cover" checked>
+                <span>Preencher <em>corta as bordas</em></span>
+              </label>
+              <label class="segment">
+                <input type="radio" name="fit-mode" value="contain">
+                <span>Encaixar <em>tudo, com tarjas</em></span>
+              </label>
+            </div>
+            <div class="fit-warning hidden" id="fit-warning"></div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="btn-cancel-export" class="ghost-btn">Cancelar</button>
+          <button id="btn-export" class="export-btn-primary" disabled>Cortar e Salvar</button>
+        </div>
+      </div>
+
+      <!-- Etapa 2: progresso -->
+      <div id="export-step-progress" class="hidden">
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="export-progress-bar-fill"></div>
+        </div>
+        <div class="progress-status-text" id="export-progress-text">Processando: 0%</div>
+
+        <div class="export-results-list" id="export-results-list">
+          <!-- Linhas de progresso para cada clipe -->
+        </div>
+
+        <div class="modal-footer">
+          <button id="btn-open-folder" class="ghost-btn hidden">Abrir Pasta</button>
+          <button id="btn-close-progress" class="export-btn-primary hidden">Concluído</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE EXPORTAÇÃO (TELA DE MESCLAGEM) -->
+  <div class="modal-overlay hidden" id="merge-export-modal">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <h3>Mesclar e Salvar</h3>
+        <button class="modal-close" id="btn-close-merge-modal" title="Fechar">×</button>
+      </div>
+
+      <div id="merge-step-form">
+        <div class="export-summary" id="merge-summary"></div>
+
+        <div class="field-group">
+          <label for="merge-output-path-display">Pasta de Destino</label>
+          <div class="input-action-group">
+            <input type="text" id="merge-output-path-display" placeholder="Selecione onde salvar..." readonly>
+            <button id="btn-merge-select-output" class="btn-icon-select" title="Escolher pasta">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V6h5.17l2 2H20v10z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="input-merge-output-name">Nome do Arquivo</label>
+          <input type="text" id="input-merge-output-name" class="text-input" placeholder="videos_mesclados" maxlength="120">
+          <span class="field-hint">Salvo como <code>.mp4</code> na pasta escolhida.</span>
+        </div>
+
+        <div class="field-group">
+          <label for="select-merge-format">Formato de Saída</label>
+          <select id="select-merge-format" class="select-input"></select>
+          <span class="field-hint" id="merge-format-hint">Padroniza pela maior resolução entre os vídeos.</span>
+
+          <div class="fit-choice hidden" id="merge-fit-choice">
+            <span class="fit-choice-label">Ajuste</span>
+            <div class="segmented" id="merge-segmented-fit">
+              <label class="segment">
+                <input type="radio" name="merge-fit-mode" value="cover" checked>
+                <span>Preencher <em>corta as bordas</em></span>
+              </label>
+              <label class="segment">
+                <input type="radio" name="merge-fit-mode" value="contain">
+                <span>Encaixar <em>tudo, com tarjas</em></span>
+              </label>
+            </div>
+            <div class="fit-warning hidden" id="merge-fit-warning"></div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="btn-cancel-merge-export" class="ghost-btn">Cancelar</button>
+          <button id="btn-merge-export" class="export-btn-primary" disabled>Mesclar e Salvar</button>
+        </div>
+      </div>
+
+      <div id="merge-step-progress" class="hidden">
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="merge-progress-bar-fill"></div>
+        </div>
+        <div class="progress-status-text" id="merge-progress-text">Processando mesclagem: 0%</div>
+
+        <div class="modal-footer">
+          <button id="btn-merge-open-folder" class="ghost-btn hidden">Abrir Pasta</button>
+          <button id="btn-merge-close-progress" class="export-btn-primary hidden">Concluído</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE ATALHOS DE TECLADO -->
+  <div class="modal-overlay hidden" id="shortcuts-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Atalhos de Teclado</h3>
+        <button class="modal-close" id="btn-close-shortcuts" title="Fechar">×</button>
+      </div>
+      <div class="shortcuts-grid">
+        <span class="shortcuts-heading">Projeto</span>
+        <span class="kbd">Ctrl + S</span><span>Salvar o projeto</span>
+        <span class="kbd">Ctrl + Shift + S</span><span>Salvar como (escolher outro arquivo)</span>
+        <span class="kbd">Ctrl + O</span><span>Abrir um projeto salvo</span>
+
+        <span class="shortcuts-heading">Montagem</span>
+        <span class="kbd">Ctrl + Z</span><span>Desfazer</span>
+        <span class="kbd">Ctrl + Y</span><span>Refazer</span>
+        <span class="kbd">Ctrl + C</span><span>Copiar os trechos selecionados</span>
+        <span class="kbd">Ctrl + V</span><span>Colar na posição da agulha</span>
+        <span class="kbd">Ctrl + D</span><span>Duplicar</span>
+        <span class="kbd">S</span><span>Dividir o trecho na agulha</span>
+        <span class="kbd">Delete</span><span>Excluir os trechos selecionados</span>
+        <span class="kbd">F2</span><span>Renomear o trecho selecionado</span>
+        <span class="kbd">Esc</span><span>Limpar a seleção</span>
+
+        <span class="shortcuts-heading">Seleção</span>
+        <span class="kbd">Ctrl + clique</span><span>Somar ou tirar um trecho da seleção</span>
+        <span class="kbd">Shift + clique</span><span>Selecionar o intervalo inteiro na faixa</span>
+        <span class="kbd">Duplo clique</span><span>Na mídia: acrescenta ao fim da faixa<br>No nome da faixa: renomeia a faixa</span>
+
+        <span class="shortcuts-heading">Reprodução</span>
+        <span class="kbd">Espaço</span><span>Reproduzir / Pausar a montagem</span>
+        <span class="kbd">← →</span><span>Um frame para trás / frente</span>
+        <span class="kbd">Shift + ← →</span><span>5 segundos para trás / frente</span>
+        <span class="kbd">Home / End</span><span>Ir para o início / fim da montagem</span>
+        <span class="kbd">M</span><span>Mudo no monitor</span>
+
+        <span class="shortcuts-heading">Linha do tempo</span>
+        <span class="kbd">Ctrl + roda</span><span>Zoom da linha do tempo</span>
+        <span class="kbd">Arrastar a régua</span><span>Mover a agulha</span>
+        <span class="kbd">Arrastar a borda</span><span>Aparar o trecho (gruda nas bordas vizinhas)</span>
+        <span class="kbd">Arrastar a divisória</span><span>Mudar a altura da linha do tempo<br>(duplo clique volta ao padrão)</span>
+
+        <span class="shortcuts-heading">Faixas</span>
+        <span class="kbd">▲ ▼ na faixa</span><span>Mudar a ordem: a mais acima aparece na frente do vídeo</span>
+        <span class="kbd">S na faixa</span><span>Isolar o som dessa faixa (as outras ficam mudas)</span>
+        <span class="kbd">Clicar num trecho</span><span>No monitor, ele vem para a frente enquanto está selecionado.<br>O vídeo exportado segue a ordem das faixas.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL DE CONFIRMAÇÃO (descartar trabalho) -->
+  <!-- Fica por cima dos demais: pode abrir com um modal de exportação aberto. -->
+  <div class="modal-overlay hidden" id="confirm-modal">
+    <div class="modal-card modal-card-narrow">
+      <div class="modal-header">
+        <h3 id="confirm-modal-title">Sair sem salvar?</h3>
+        <button class="modal-close" id="btn-close-confirm-modal" title="Fechar">×</button>
+      </div>
+
+      <div class="confirm-body">
+        <p class="confirm-message" id="confirm-modal-message"></p>
+        <ul class="confirm-details hidden" id="confirm-modal-details"></ul>
+      </div>
+
+      <div class="modal-footer">
+        <button id="btn-confirm-cancel" class="ghost-btn">Continuar editando</button>
+        <!-- Só aparece quando existe algo salvável: sair não precisa ser
+             uma escolha entre perder tudo e desistir da saída. -->
+        <button id="btn-confirm-save" class="secondary-btn hidden">Salvar projeto</button>
+        <button id="btn-confirm-ok" class="danger-btn">Sair sem salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
