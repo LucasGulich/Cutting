@@ -1,16 +1,31 @@
+<div align="center">
+
+<img src="build/icon-128.png" width="96" alt="Cutting">
+
 # Cutting
 
-Editor de vídeo de mesa para Windows. Corta, monta em faixas, aplica transições, efeitos, títulos e trilha sonora — e exporta tudo localmente, sem nuvem, sem conta e sem marca d'água.
+**Editor de vídeo de mesa para Windows.**
+Corta, monta em faixas, aplica transições, efeitos, títulos e trilha sonora — tudo na sua máquina, sem nuvem, sem conta e sem marca d'água.
 
-Feito com Electron e FFmpeg. Os binários do FFmpeg vêm embutidos no aplicativo: quem instala não precisa configurar nada.
+[![Versão](https://img.shields.io/badge/versão-4.4.0-8b5cf6?style=flat-square)](#)
+[![Electron](https://img.shields.io/badge/Electron-31-47848F?style=flat-square&logo=electron&logoColor=white)](https://www.electronjs.org/)
+[![FFmpeg](https://img.shields.io/badge/FFmpeg-6.1-007808?style=flat-square&logo=ffmpeg&logoColor=white)](https://ffmpeg.org/)
+[![Node](https://img.shields.io/badge/Node-18+-339933?style=flat-square&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![Windows](https://img.shields.io/badge/Windows-10+-0078D4?style=flat-square&logo=windows&logoColor=white)](#)
+[![Licença](https://img.shields.io/badge/licença-ISC-blue?style=flat-square)](LICENSE)
 
-**Versão atual:** 4.4.0 · **Autor:** Lucas Gulich
+<img src="docs/img/02-editor.png" alt="O editor do Cutting: biblioteca de mídias, monitor da montagem e linha do tempo em faixas">
+
+</div>
+
+Os binários do FFmpeg vêm embutidos: quem instala não precisa configurar nada.
 
 ---
 
 ## Índice
 
 - [O que ele faz](#o-que-ele-faz)
+- [Capturas de tela](#capturas-de-tela)
 - [Como rodar](#como-rodar)
 - [As três telas](#as-três-telas)
 - [Fluxo de uso](#fluxo-de-uso)
@@ -41,11 +56,45 @@ Feito com Electron e FFmpeg. Os binários do FFmpeg vêm embutidos no aplicativo
 
 ---
 
+## Capturas de tela
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/img/01-inicio.png" alt="Tela inicial">
+      <p align="center"><sub><b>Início</b> — os três caminhos de entrada e os projetos recentes</sub></p>
+    </td>
+    <td width="50%">
+      <img src="docs/img/03-editar-trecho.png" alt="Painel de edição do trecho">
+      <p align="center"><sub><b>Editar trecho</b> — recorte, transição de entrada, enquadramento e efeitos</sub></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/img/04-exportar.png" alt="Modal de exportação">
+      <p align="center"><sub><b>Exportar</b> — vídeo único ou arquivos separados, em sete formatos</sub></p>
+    </td>
+    <td width="50%">
+      <img src="docs/img/06-mesclar.png" alt="Tela de mesclagem">
+      <p align="center"><sub><b>Mesclar</b> — junta arquivos inteiros, sem recortar nada</sub></p>
+    </td>
+  </tr>
+</table>
+
+<details>
+<summary><b>Atalhos de teclado dentro do app</b></summary>
+
+<img src="docs/img/05-atalhos.png" alt="Modal de atalhos de teclado">
+
+</details>
+
+---
+
 ## Como rodar
 
 ### Pré-requisitos
 
-- **Node.js 18 ou superior** ([nodejs.org](https://nodejs.org))
+- **Node.js 18 ou superior** para rodar o app, e **22 ou superior** para rodar os testes ([nodejs.org](https://nodejs.org))
 - **Windows 10 build 17763 ou superior, 64 bits**
 
 Não é preciso instalar FFmpeg: ele vem junto pelas dependências `ffmpeg-static` e `@ffprobe-installer/ffprobe`.
@@ -53,7 +102,7 @@ Não é preciso instalar FFmpeg: ele vem junto pelas dependências `ffmpeg-stati
 ### Passo a passo
 
 ```bash
-git clone <url-do-repositorio>
+git clone https://github.com/LucasGulich/Cutting.git
 cd Cutting
 npm install
 npm start
@@ -66,7 +115,9 @@ npm start
 | Comando | O que faz |
 | --- | --- |
 | `npm start` | Abre o aplicativo em modo de desenvolvimento |
-| `npm test` | Roda a bateria de testes do backend (gera as próprias mídias) |
+| `npm test` | Roda toda a bateria: testes unitários, FFmpeg e interface (200 testes, ~20 s) |
+| `npm run test:unit` | Só os testes puros (meio segundo) |
+| `npm run test:integracao` | Só os de FFmpeg e Electron |
 | `npm run dist` | Empacota o executável Windows em `dist/` |
 | `npm run icone` | Regera os PNGs e o `icon.ico` em `build/` |
 
@@ -258,11 +309,17 @@ O ícone da **janela** vem de `build/icon.ico` carregado em tempo de execução;
 npm test
 ```
 
-A bateria é de integração de verdade: gera as próprias mídias sintéticas com FFmpeg e **confere o conteúdo** do resultado, não só se o comando não deu erro. O corte, por exemplo, é validado por PSNR — compara o primeiro frame do arquivo cortado com o frame do original no tempo pedido, e também com o frame do segundo 0, para pegar o caso em que o vídeo saiu desde o começo.
+São **200 testes em cerca de 20 segundos**, em três camadas:
 
-Os 9 testes cobrem: leitura de metadados, geração de preview, corte preciso em vídeo com GOP longo, corte rápido sem perda, mesclagem por concat demuxer, sequência multi-fonte com resoluções diferentes, higienização de nomes e proteção contra sobrescrita, formato de saída nos modos preencher/encaixar, e foto virando trecho de vídeo (inclusive com dimensão ímpar, que quebraria o `yuv420p`).
+| Camada | O que garante |
+| --- | --- |
+| **Unitária** (129) | As regras puras: cálculo de duração e volume, normalização dos ajustes, montagem dos filtros e do grafo de áudio, formato dos argumentos do FFmpeg, decisões da linha do tempo |
+| **FFmpeg** (37) | O FFmpeg de verdade **aceita** cada filtro e grafo montado, e o arquivo que sai tem o codec, a duração e o volume esperados |
+| **Electron** (33) | O app sobe, os handlers respondem e a interface funciona de ponta a ponta (separar áudio, salvar só áudio com a confirmação de 3 s), sem erro no console |
 
-Os arquivos temporários ficam em `dist/teste/` e são limpos ao final.
+Os testes geram as próprias mídias sintéticas, rodam numa pasta temporária e **nunca tocam nos dados do app**. O corte, por exemplo, é validado por PSNR — compara o primeiro frame do arquivo cortado com o frame do original no tempo pedido, e também com o do segundo 0, para pegar o caso em que o vídeo saiu desde o começo.
+
+**Toda funcionalidade nova entra com teste, e todo bug corrigido, com o teste que o teria pego.** O roteiro completo (o que testar em cada caso, padrões do projeto e o checklist de "pronto") está em [`docs/DESENVOLVIMENTO.md`](docs/DESENVOLVIMENTO.md) e [`docs/TESTES.md`](docs/TESTES.md).
 
 ---
 
@@ -275,7 +332,10 @@ Os arquivos temporários ficam em `dist/teste/` e são limpos ao final.
 | `renderer.js` | A interface inteira: linha do tempo, monitor, painéis, atalhos |
 | `index.html` | Estrutura das três telas e dos modais |
 | `style.css` | Estilos |
-| `test_backend.js` | Testes de integração do backend |
+| `lib/` | A lógica pura (filtros, montagem, áudio, regras da linha do tempo), sem Electron e sem tela, testada |
+| `tests/` | Testes unitários (`unit/`) e de integração com FFmpeg e Electron (`integracao/`) |
+| `test_backend.js` | Os 9 testes de integração originais do backend |
+| `empacotar.cmd` / `executar.cmd` / `testar.cmd` | Gera o zip para enviar / abre para testar / roda os testes |
 | `gerar-icone.js` / `empacotar-icone.js` | Geração dos PNGs e montagem do `.ico` |
 | `diagnostico.bat` | Coleta informações numa máquina onde o executável não abre |
 

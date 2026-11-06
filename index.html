@@ -452,6 +452,18 @@
                     Leva este trecho ao mesmo nível dos demais (padrão das plataformas de vídeo).
                     Útil quando um trecho ficou muito mais baixo ou mais alto que o resto.
                   </span>
+
+                  <div class="props-row audio-actions">
+                    <button class="chip-btn" id="btn-separate-audio"
+                            title="Põe o som numa faixa de áudio e silencia o vídeo, para tratar os dois separados">
+                      Separar áudio do vídeo
+                    </button>
+                    <button class="chip-btn" id="btn-export-audio"
+                            title="Salva só o som deste trecho (MP3, M4A, WAV ou FLAC)">
+                      Exportar só áudio
+                    </button>
+                  </div>
+                  <span class="props-hint hidden" id="audio-actions-hint"></span>
                 </div>
               </div>
             </div>
@@ -802,10 +814,23 @@
           <select id="select-join-mode" class="select-input">
             <option value="merged" selected>Vídeo único (a montagem inteira)</option>
             <option value="separate">Arquivos separados (um por trecho)</option>
+            <option value="audio">Somente áudio (um arquivo)</option>
+          </select>
+          <span class="field-hint hidden" id="join-mode-hint"></span>
+        </div>
+
+        <!-- Só aparece com "Somente áudio" -->
+        <div class="field-group hidden" id="audio-format-group">
+          <label for="select-audio-format">Formato do Áudio</label>
+          <select id="select-audio-format" class="select-input">
+            <option value="mp3" selected>MP3 (compatível com tudo)</option>
+            <option value="m4a">M4A / AAC (boa qualidade, arquivo pequeno)</option>
+            <option value="wav">WAV (sem compressão, arquivo grande)</option>
+            <option value="flac">FLAC (sem perda, compactado)</option>
           </select>
         </div>
 
-        <div class="field-group">
+        <div class="field-group" id="video-format-group">
           <label for="select-output-format">Formato de Saída</label>
           <!-- As opções são geradas pelo JS a partir de OUTPUT_FORMATS -->
           <select id="select-output-format" class="select-input"></select>
@@ -997,6 +1022,7 @@
     </div>
   </div>
 
+  <script src="lib/linhadotempo.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>

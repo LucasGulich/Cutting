@@ -4,6 +4,28 @@ const fs = require('fs');
 const { execFile, spawn } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
 
+// Lógica pura (sem Electron), separada para poder ser testada: ver docs/TESTES.md
+const {
+  IMAGE_MIN_ZOOM, IMAGE_MAX_ZOOM,
+  clampNumber, evenRound,
+  normalizeFormat, normalizeFraming, isDefaultFraming, computeMediaLayout,
+  DEFAULT_ADJUST, normalizeAdjust, hasAdjustments,
+  buildAdjustChain, buildBlurRegionGraph, buildAtempoChain, buildMediaComposite,
+  buildScaleFilter
+} = require('./lib/filtros');
+const { sanitizeFileName, uniquePath } = require('./lib/arquivos');
+const {
+  AUDIO_EXPORT_FORMATS, AUDIO_ONLY_FRAME, audioFormatOrDefault,
+  buildExtractAudioArgs, buildSeparateAudioArgs, buildMixToAudioArgs
+} = require('./lib/audio');
+const {
+  TIME_EPSILON, AUDIO_RATE, AUDIO_ENCODE, LOUDNORM,
+  sourceSpan, itemDuration, itemEnd, itemVolume,
+  TRANSITION_TYPES, normalizeTransition,
+  describeDrift, buildCompositionGraph
+} = require('./lib/montagem');
+
+
 // Guardamos o binário do ffprobe para consultas diretas (listagem de keyframes)
 let ffprobeBinary = null;
 let ffmpegBinary = null;
@@ -408,266 +430,6 @@ ipcMain.handle('export-timeline', async (event, payload) => {
 // Para acrescentar um formato novo não é preciso mexer aqui: o alvo chega
 // pronto da interface, este módulo só valida e monta o filtro.
 
-function normalizeFormat(format) {
-  if (!format) return null;
-
-  const width = Math.round(Number(format.width));
-  const height = Math.round(Number(format.height));
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width < 2 || height < 2) {
-    return null;
-  }
-
-  // Dimensões ímpares quebram o yuv420p do libx264
-  return {
-    width: Math.max(2, Math.round(width / 2) * 2),
-    height: Math.max(2, Math.round(height / 2) * 2),
-    fit: format.fit === 'contain' ? 'contain' : 'cover'
-  };
-}
-
-const clampNumber = (value, min, max) => Math.min(Math.max(value, min), max);
-const evenRound = (value) => Math.max(2, Math.round(value / 2) * 2);
-
-// --- ENQUADRAMENTO DA FOTO -------------------------------------------------
-//
-// framing = { zoom, offsetX, offsetY, background: { mode, color } }
-//   zoom     : 1 = foto inteira encaixada no quadro. <1 afasta (sobra fundo),
-//              >1 aproxima (a foto transborda e é aparada pelo quadro).
-//   offsetX/Y: deslocamento em FRAÇÃO do quadro (0 = centro, 0.5 = meia tela).
-//              Fração, e não pixels, para a mesma escolha valer em qualquer
-//              resolução de saída.
-//   background: 'color' = cor sólida | 'blur' = a própria foto desfocada
-//              preenchendo o quadro (o efeito de fundo do Reels/Shorts).
-
-function normalizeFraming(framing) {
-  const source = framing || {};
-  const background = source.background || {};
-  const hex = /^#[0-9a-fA-F]{6}$/.test(background.color || '') ? background.color : '#000000';
-
-  return {
-    zoom: clampNumber(Number(source.zoom) || 1, IMAGE_MIN_ZOOM, IMAGE_MAX_ZOOM),
-    offsetX: clampNumber(Number(source.offsetX) || 0, -2, 2),
-    offsetY: clampNumber(Number(source.offsetY) || 0, -2, 2),
-    background: { mode: background.mode === 'blur' ? 'blur' : 'color', color: hex }
-  };
-}
-
-const isDefaultFraming = (framing) =>
-  framing.zoom === 1 &&
-  framing.offsetX === 0 &&
-  framing.offsetY === 0 &&
-  framing.background.mode === 'color' &&
-  framing.background.color === '#000000';
-
-// Onde e com que tamanho a foto é desenhada dentro do quadro de saída.
-// zoom = 1 parte do "encaixe" (a foto inteira cabendo), que é a referência
-// natural: o usuário mexe a partir de ver a foto completa.
-function computeMediaLayout(mediaSize, frame, framing) {
-  const fitScale = Math.min(frame.width / mediaSize.width, frame.height / mediaSize.height);
-  const drawWidth = evenRound(mediaSize.width * fitScale * framing.zoom);
-  const drawHeight = evenRound(mediaSize.height * fitScale * framing.zoom);
-
-  return {
-    drawWidth,
-    drawHeight,
-    x: Math.round((frame.width - drawWidth) / 2 + framing.offsetX * frame.width),
-    y: Math.round((frame.height - drawHeight) / 2 + framing.offsetY * frame.height)
-  };
-}
-
-// Grafo de filtros que compõe fundo + mídia posicionada. Serve para foto e
-// para vídeo — a diferença está só em de onde vem o áudio.
-//
-// audioSource: rótulo da entrada de áudio (ex.: '1:a' para o silêncio gerado,
-//              '0:a' para o áudio do próprio vídeo) ou null para saída muda.
-// --- AJUSTES POR TRECHO -----------------------------------------------------
-//
-// Todos entram na MESMA cadeia, aplicada à mídia ANTES do enquadramento. A
-// ordem importa e é esta de propósito:
-//
-//   1. girar/espelhar  — muda a orientação, então vem antes de tudo que mede
-//   2. cor             — sobre a imagem já orientada
-//   3. chroma          — recorta o fundo depois da cor (senão a correção de cor
-//                        mudaria o verde e a chave erraria o alvo)
-//   4. borrão de área  — por último, para tapar o que ficou visível
-//
-// A velocidade NÃO entra aqui: ela mexe no tempo, não na imagem, e é aplicada
-// separadamente (setpts no vídeo, atempo no áudio).
-
-const DEFAULT_ADJUST = {
-  speed: 1,
-  opacity: 1,
-  rotate: 0,
-  flipH: false,
-  flipV: false,
-  color: null,        // { brightness, contrast, saturation }
-  blurRegion: null,   // { x, y, w, h } em fração do quadro da mídia
-  chroma: null        // { color, similarity, blend }
-};
-
-function normalizeAdjust(clip) {
-  const a = clip || {};
-  const color = a.color && (a.color.brightness || a.color.contrast !== 1 || a.color.saturation !== 1)
-    ? {
-      brightness: clampNumber(Number(a.color.brightness) || 0, -1, 1),
-      contrast: clampNumber(Number(a.color.contrast) === undefined ? 1 : Number(a.color.contrast), 0, 3),
-      saturation: clampNumber(Number(a.color.saturation) === undefined ? 1 : Number(a.color.saturation), 0, 3)
-    }
-    : null;
-
-  const region = a.blurRegion && a.blurRegion.w > 0.01 && a.blurRegion.h > 0.01
-    ? {
-      x: clampNumber(Number(a.blurRegion.x) || 0, 0, 1),
-      y: clampNumber(Number(a.blurRegion.y) || 0, 0, 1),
-      w: clampNumber(Number(a.blurRegion.w) || 0, 0.01, 1),
-      h: clampNumber(Number(a.blurRegion.h) || 0, 0.01, 1)
-    }
-    : null;
-
-  const chroma = a.chroma && /^#[0-9a-fA-F]{6}$/.test(a.chroma.color || '')
-    ? {
-      color: a.chroma.color,
-      similarity: clampNumber(Number(a.chroma.similarity) || 0.3, 0.01, 1),
-      blend: clampNumber(Number(a.chroma.blend) || 0.1, 0, 1)
-    }
-    : null;
-
-  return {
-    speed: clampNumber(Number(a.speed) || 1, 0.1, 10),
-    opacity: clampNumber(a.opacity === undefined ? 1 : Number(a.opacity), 0, 1),
-    rotate: [0, 90, 180, 270].includes(Number(a.rotate)) ? Number(a.rotate) : 0,
-    flipH: !!a.flipH,
-    flipV: !!a.flipV,
-    color, blurRegion: region, chroma
-  };
-}
-
-const hasAdjustments = (a) =>
-  a.rotate !== 0 || a.flipH || a.flipV || a.color || a.blurRegion || a.chroma || a.opacity < 1;
-
-// Filtros que agem sobre a imagem, na ordem descrita acima. Devolve os trechos
-// já encadeados por vírgula, ou string vazia se não houver nada a fazer.
-function buildAdjustChain(adjust, mediaSize) {
-  const parts = [];
-
-  if (adjust.rotate === 90) parts.push('transpose=1');
-  else if (adjust.rotate === 180) parts.push('transpose=1,transpose=1');
-  else if (adjust.rotate === 270) parts.push('transpose=2');
-  if (adjust.flipH) parts.push('hflip');
-  if (adjust.flipV) parts.push('vflip');
-
-  if (adjust.color) {
-    parts.push(
-      `eq=brightness=${adjust.color.brightness.toFixed(3)}:` +
-      `contrast=${adjust.color.contrast.toFixed(3)}:` +
-      `saturation=${adjust.color.saturation.toFixed(3)}`
-    );
-  }
-
-  if (adjust.chroma) {
-    // O chromakey abre transparência; o formato precisa suportar alfa, senão
-    // o recorte se perde na próxima etapa.
-    parts.push(
-      `format=yuva420p,chromakey=0x${adjust.chroma.color.slice(1)}:` +
-      `${adjust.chroma.similarity.toFixed(3)}:${adjust.chroma.blend.toFixed(3)}`
-    );
-  }
-
-  if (adjust.opacity < 1) {
-    parts.push(`format=yuva420p,colorchannelmixer=aa=${adjust.opacity.toFixed(3)}`);
-  }
-
-  return parts.join(',');
-}
-
-// O borrão de região precisa de um grafo próprio (recorta, borra e devolve),
-// então não cabe na cadeia linear acima.
-function buildBlurRegionGraph(input, output, region, mediaSize) {
-  if (!mediaSize) return `[${input}]null[${output}]`;
-
-  const w = evenRound(mediaSize.width * region.w);
-  const h = evenRound(mediaSize.height * region.h);
-  const x = Math.round(mediaSize.width * region.x);
-  const y = Math.round(mediaSize.height * region.y);
-
-  return `[${input}]split=2[brbase][brcut];` +
-         `[brcut]crop=${w}:${h}:${x}:${y},boxblur=12:2[brblur];` +
-         `[brbase][brblur]overlay=${x}:${y}[${output}]`;
-}
-
-// atempo só aceita de 0.5 a 2.0; fora disso encadeia-se mais de um.
-// Sem isso, uma câmera lenta de 0.25x sairia com o áudio intacto e fora de sincronia.
-function buildAtempoChain(speed) {
-  const steps = [];
-  let remaining = speed;
-  while (remaining < 0.5) { steps.push(0.5); remaining /= 0.5; }
-  while (remaining > 2.0) { steps.push(2.0); remaining /= 2.0; }
-  steps.push(remaining);
-  return steps.map((s) => `atempo=${s.toFixed(4)}`).join(',');
-}
-
-function buildMediaComposite(frame, layout, background, audioSource, adjust, mediaSize, preChain) {
-  const { width, height } = frame;
-  const { drawWidth, drawHeight, x, y } = layout;
-  const settings = adjust || normalizeAdjust({});
-
-  let graph = '';
-
-  // Etapa opcional aplicada à fonte antes de tudo (usada pela velocidade).
-  // Fica como um passo nomeado em vez de emenda de texto no grafo pronto:
-  // procurar "[0:v]" numa string montada é o tipo de coisa que quebra em
-  // silêncio quando o grafo muda de forma.
-  let sourceLabel = '0:v';
-  if (preChain) {
-    graph += `[0:v]${preChain}[srcpre];`;
-    sourceLabel = 'srcpre';
-  }
-
-  if (background.mode === 'blur') {
-    // Desfoque feito em miniatura e depois ampliado: o resultado é
-    // visualmente o mesmo de desfocar em tamanho real, e evita processar um
-    // blur pesado em CADA frame do trecho (10s a 30fps são 300 frames).
-    const smallWidth = evenRound(width / 8);
-    const smallHeight = evenRound(height / 8);
-    graph +=
-      `[${sourceLabel}]split=2[bgsrc][fgsrc];` +
-      `[bgsrc]scale=${smallWidth}:${smallHeight}:force_original_aspect_ratio=increase,` +
-      `crop=${smallWidth}:${smallHeight},boxblur=4:2,scale=${width}:${height},setsar=1[bg];`;
-  } else {
-    // 0x… e não #…: o parser de filtros do ffmpeg trata '#' como comentário
-    graph +=
-      `color=c=0x${background.color.slice(1)}:s=${width}x${height}[bg];` +
-      `[${sourceLabel}]null[fgsrc];`;
-  }
-
-  // Ajustes da imagem entram entre a fonte e o enquadramento
-  const chain = buildAdjustChain(settings, mediaSize);
-  let frontLabel = 'fgsrc';
-
-  if (chain) {
-    graph += `[${frontLabel}]${chain}[fgadj];`;
-    frontLabel = 'fgadj';
-  }
-
-  // O borrão vem DEPOIS de girar: a região é escolhida sobre a imagem como ela
-  // aparece, então as coordenadas valem no tamanho já rotacionado.
-  if (settings.blurRegion) {
-    const rotated = settings.rotate === 90 || settings.rotate === 270;
-    const size = mediaSize && rotated
-      ? { width: mediaSize.height, height: mediaSize.width }
-      : mediaSize;
-    graph += buildBlurRegionGraph(frontLabel, 'fgblur', settings.blurRegion, size) + ';';
-    frontLabel = 'fgblur';
-  }
-
-  graph +=
-    `[${frontLabel}]scale=${drawWidth}:${drawHeight},setsar=1[fg];` +
-    `[bg][fg]overlay=${x}:${y}[v]`;
-
-  if (audioSource) graph += `;[${audioSource}]anull[a]`;
-
-  return graph;
-}
 
 function probeFrameSize(filePath) {
   return new Promise((resolve) => {
@@ -679,46 +441,8 @@ function probeFrameSize(filePath) {
   });
 }
 
-function buildScaleFilter({ width, height, fit }) {
-  if (fit === 'contain') {
-    // `decrease` cabe dentro do alvo; o pad centraliza e completa com tarjas
-    return `scale=${width}:${height}:force_original_aspect_ratio=decrease,` +
-           `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,setsar=1`;
-  }
-  // `increase` cobre o alvo inteiro (sobrando para fora); o crop apara no centro
-  return `scale=${width}:${height}:force_original_aspect_ratio=increase,` +
-         `crop=${width}:${height},setsar=1`;
-}
 
-// Remove caracteres proibidos em nomes de arquivo no Windows.
-function sanitizeFileName(name) {
-  if (!name || typeof name !== 'string') return '';
-  return name
-    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
-    .replace(/\s+/g, ' ')
-    .replace(/^\.+|\.+$/g, '')
-    .trim()
-    .slice(0, 120);
-}
 
-// Evita sobrescrever silenciosamente: acrescenta (2), (3)... se o arquivo já existir.
-function uniquePath(dirPath, fileName) {
-  const ext = path.extname(fileName);
-  const stem = path.basename(fileName, ext);
-  let candidate = path.join(dirPath, fileName);
-  let counter = 2;
-  while (fs.existsSync(candidate)) {
-    candidate = path.join(dirPath, `${stem} (${counter})${ext}`);
-    counter++;
-  }
-  return candidate;
-}
-
-function describeDrift(drift) {
-  return Math.abs(drift) > 0.1
-    ? `Concluído (início ajustado ${drift >= 0 ? '+' : ''}${drift.toFixed(1)}s p/ keyframe)`
-    : 'Concluído!';
-}
 
 // ==========================================================================
 // EXPORTAÇÃO POR COMPOSIÇÃO (linha do tempo em faixas)
@@ -740,45 +464,6 @@ function describeDrift(drift) {
 // base reaproveita a concatenação, que já é território conhecido e testado.
 // ==========================================================================
 
-const TIME_EPSILON = 0.02;   // menor que um frame a 30fps
-const AUDIO_RATE = 44100;
-
-// Áudio uniforme em todos os segmentos: é o que permite concatenar sem recodificar
-const AUDIO_ENCODE = ['-c:a aac', '-b:a 192k', `-ar ${AUDIO_RATE}`, '-ac 2'];
-
-// Normalização de volume (EBU R128, os mesmos alvos que as plataformas de vídeo
-// usam). Em uma passagem só: duas passagens medem melhor, mas exigiriam
-// analisar cada trecho antes de exportar — o ganho não paga o tempo aqui.
-//   I  = volume médio percebido, em LUFS
-//   TP = pico máximo, com folga para não estourar na conversão
-//   LRA= quanta diferença entre o mais baixo e o mais alto ainda é permitida
-const LOUDNORM = 'loudnorm=I=-16:TP=-1.5:LRA=11';
-
-// Duração NA LINHA DO TEMPO. A velocidade separa as duas contas: um trecho de
-// 10s da fonte a 2x ocupa 5s na montagem. Todo o resto do motor mede tempo de
-// linha do tempo, então a divisão fica concentrada aqui.
-// Quanto de material o trecho consome do arquivo original. Não é o mesmo que a
-// duração na montagem: com velocidade, 4s de material podem virar 2s de vídeo.
-const sourceSpan = (item) => Math.max(0, item.sourceEnd - item.sourceStart);
-
-const itemDuration = (item) => {
-  const speed = clampNumber(Number(item.speed) || 1, 0.1, 10);
-  return sourceSpan(item) / speed;
-};
-const itemEnd = (item) => item.timelineStart + itemDuration(item);
-
-// Transições aceitas. São nomes do filtro `xfade`, que só existe a partir do
-// ffmpeg 4.3 — por isso a troca do binário embutido veio antes deste recurso.
-const TRANSITION_TYPES = [
-  'fade', 'fadeblack', 'fadewhite', 'dissolve',
-  'wipeleft', 'wiperight', 'wipeup', 'wipedown',
-  'slideleft', 'slideright', 'slideup', 'slidedown',
-  'circleopen', 'circleclose', 'radial', 'smoothleft', 'smoothright',
-  'pixelize', 'hlslice', 'vuslice'
-];
-
-const normalizeTransition = (type) =>
-  TRANSITION_TYPES.includes(type) ? type : 'fade';
 
 /**
  * Monta a faixa base aplicando transições nas emendas marcadas.
@@ -913,7 +598,7 @@ function buildNormalizedItem(item, outputPath, frame, fps, mediaSize, hasAudio) 
   const layout = computeMediaLayout(effectiveSize, frame, framing);
 
   // Volume e mudo do item entram aqui, junto com o resto da normalização
-  const volume = item.muted ? 0 : clampNumber(Number(item.volume) || 1, 0, 4);
+  const volume = itemVolume(item);
 
   let command = ffmpeg();
   if (isImage) {
@@ -967,135 +652,6 @@ function buildNormalizedItem(item, outputPath, frame, fps, mediaSize, hasAudio) 
     .output(outputPath);
 }
 
-// Grafo do passe final: sobreposições e mistura de áudio sobre a faixa base.
-//
-// entrada 0        = vídeo da faixa base (já com a duração total)
-// entradas 1..n    = itens de sobreposição, na ordem de empilhamento
-// entradas n+1..m  = itens de áudio
-function buildCompositionGraph(overlays, audios, frame, duration, textChain) {
-  const parts = [];
-  let videoLabel = '0:v';
-
-  overlays.forEach((overlay, index) => {
-    const input = overlay.inputIndex;
-    const layout = overlay.layout;
-    const start = overlay.item.timelineStart;
-    const end = itemEnd(overlay.item);
-
-    // Os ajustes valem também para quem está por cima — é justamente aqui que
-    // o chroma e a opacidade fazem mais sentido, porque o que aparece atrás é
-    // a faixa de baixo. A ordem é a mesma do trecho de base: girar/espelhar,
-    // cor, chroma e opacidade; depois o borrão; e só então a escala.
-    const adjust = normalizeAdjust(overlay.item);
-    let label = `${input}:v`;
-
-    const chain = buildAdjustChain(adjust, overlay.effectiveSize);
-    if (chain) {
-      parts.push(`[${label}]${chain}[oadj${index}]`);
-      label = `oadj${index}`;
-    }
-    if (adjust.blurRegion) {
-      parts.push(buildBlurRegionGraph(label, `oblur${index}`, adjust.blurRegion, overlay.effectiveSize));
-      label = `oblur${index}`;
-    }
-
-    // `setpts` desloca o trecho para a sua posição na linha do tempo (e divide
-    // pela velocidade, quando houver); `enable` garante que ele só apareça
-    // dentro da janela dele — sem isso o overlay continuaria mostrando o
-    // último frame depois de acabar.
-    const pts = adjust.speed !== 1
-      ? `setpts=(PTS-STARTPTS)/${adjust.speed.toFixed(4)}+${start.toFixed(3)}/TB`
-      : `setpts=PTS-STARTPTS+${start.toFixed(3)}/TB`;
-
-    parts.push(`[${label}]scale=${layout.drawWidth}:${layout.drawHeight},setsar=1,${pts}[ov${index}]`);
-
-    const out = `vc${index}`;
-    parts.push(
-      `[${videoLabel}][ov${index}]overlay=${layout.x}:${layout.y}:` +
-      `enable='between(t,${start.toFixed(3)},${end.toFixed(3)})':` +
-      `eof_action=pass:shortest=0[${out}]`
-    );
-    videoLabel = out;
-  });
-
-  // Texto por cima de tudo: título e legenda não devem ficar atrás de uma
-  // sobreposição. Se o vídeo ainda é a entrada crua, o filtro precisa de um
-  // rótulo de saída para poder ser mapeado.
-  if (textChain) {
-    parts.push(`[${videoLabel}]${textChain}[vtext]`);
-    videoLabel = 'vtext';
-  }
-
-  // Áudio: cada entrada é deslocada, tem o seu volume e é esticada com silêncio
-  // até a duração total. Igualar as durações evita o salto de volume que o amix
-  // produz quando uma entrada termina antes das outras.
-  const audioLabels = ['0:a'];
-
-  // O som dos vídeos das faixas de cima também entra na mistura. Sem isto um
-  // vídeo colocado numa faixa de sobreposição entrava mudo, sem aviso nenhum.
-  overlays.forEach((overlay, index) => {
-    if (!overlay.hasAudio) return;
-    const item = overlay.item;
-    const volume = item.muted ? 0 : clampNumber(Number(item.volume) || 1, 0, 4);
-    if (volume === 0) return;
-
-    const delayMs = Math.round(item.timelineStart * 1000);
-    const speed = normalizeAdjust(item).speed;
-    const tempo = speed !== 1 ? `${buildAtempoChain(speed)},` : '';
-    const norm = item.normalize ? `${LOUDNORM},` : '';
-    const label = `ovaud${index}`;   // rótulo próprio, sem colidir com o do vídeo
-
-    parts.push(
-      `[${overlay.inputIndex}:a]${norm}volume=${volume.toFixed(3)},${tempo}aresample=${AUDIO_RATE},` +
-      `adelay=${delayMs}|${delayMs},apad,atrim=0:${duration.toFixed(3)}[${label}]`
-    );
-    audioLabels.push(label);
-  });
-
-  audios.forEach((audio, index) => {
-    const delayMs = Math.round(audio.item.timelineStart * 1000);
-    const volume = audio.item.muted ? 0 : clampNumber(Number(audio.item.volume) || 1, 0, 4);
-    const label = `ac${index}`;
-    // O atempo vem ANTES do adelay: acelerar depois de deslocar mexeria também
-    // no silêncio da frente, e a trilha entraria na hora errada.
-    const speed = normalizeAdjust(audio.item).speed;
-    const tempo = speed !== 1 ? `${buildAtempoChain(speed)},` : '';
-    // Normalizar antes do volume, pelo mesmo motivo do trecho de base
-    const norm = audio.item.normalize && volume > 0 ? `${LOUDNORM},` : '';
-    parts.push(
-      `[${audio.inputIndex}:a]${norm}volume=${volume.toFixed(3)},${tempo}aresample=${AUDIO_RATE},` +
-      `adelay=${delayMs}|${delayMs},apad,atrim=0:${duration.toFixed(3)}[${label}]`
-    );
-    audioLabels.push(label);
-  });
-
-  let audioOut = '0:a';
-  if (audioLabels.length > 1) {
-    // O amix divide a soma pelo número de entradas; o volume depois devolve o
-    // nível original, para acrescentar uma trilha não abaixar o áudio do vídeo.
-    parts.push(
-      audioLabels.map((l) => `[${l}]`).join('') +
-      `amix=inputs=${audioLabels.length}:duration=longest:dropout_transition=0,` +
-      `volume=${audioLabels.length}[amixed]`
-    );
-    audioOut = 'amixed';
-  }
-
-  // Os colchetes do -map identificam um RÓTULO do grafo de filtros. Um stream de
-  // entrada (0:v, 0:a) é mapeado SEM colchetes — com eles o ffmpeg procura um
-  // rótulo com esse nome, não encontra, e aborta.
-  //
-  // Não dá para usar o .map() do fluent-ffmpeg aqui: ele aplica
-  // /^\[?(.*?)\]?$/ e recoloca os colchetes sempre, inclusive em '0:a'. Por isso
-  // estes valores vão direto nas outputOptions, já na forma final.
-  const toMap = (name) => (/^\d+:[av]$/.test(name) ? name : `[${name}]`);
-
-  return {
-    graph: parts.join(';'),
-    videoMap: toMap(videoLabel),
-    audioMap: toMap(audioOut)
-  };
-}
 
 // Alvo de saída (resolução e fps) quando o usuário não escolheu um formato:
 // manda a maior resolução e o maior fps entre os VÍDEOS da montagem. Fotos não
@@ -1823,6 +1379,158 @@ ipcMain.handle('get-audio-peaks', (event, filePath) => new Promise((resolve) => 
 }));
 
 // ==========================================================================
+// ÁUDIO: EXPORTAR SÓ O ÁUDIO E SEPARAR DO VÍDEO
+//
+// Duas operações sobre a mesma ideia: ler a faixa de áudio de uma mídia e
+// gravá-la num arquivo próprio, sem imagem.
+//   - extract-audio : o usuário escolhe nome, pasta e formato (mp3/m4a/wav/flac)
+//   - separate-audio: grava um .m4a ao lado do vídeo, sem perguntar nada, para
+//                     o renderer pôr numa faixa de áudio. Fica em disco (e não
+//                     numa pasta temporária) porque o projeto .cutting guarda
+//                     só caminhos: um arquivo temporário sumiria ao reabrir.
+// ==========================================================================
+
+// Os argumentos do ffmpeg são montados em lib/audio.js (puro e testado).
+
+// Codec da primeira faixa de áudio, ou null quando a mídia não tem áudio
+function probeAudioCodec(filePath) {
+  return new Promise((resolve) => {
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) return resolve(null);
+      const stream = metadata.streams.find((s) => s.codec_type === 'audio');
+      resolve(stream ? stream.codec_name : null);
+    });
+  });
+}
+
+function runFfmpegAudio(args) {
+  return new Promise((resolve) => {
+    let stderr = '';
+    const child = spawn(ffmpegBinary, ['-y', '-v', 'error', ...args]);
+    child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+    child.on('error', (err) => resolve({ ok: false, error: err.message }));
+    child.on('close', (code) => {
+      resolve(code === 0 ? { ok: true } : { ok: false, error: stderr.trim().slice(-400) || `FFmpeg saiu com código ${code}` });
+    });
+  });
+}
+
+// Converte uma mídia (ou um trecho dela) para só áudio.
+// start/end opcionais, em segundos DA FONTE; sem eles, converte tudo.
+ipcMain.handle('extract-audio', async (event, { sourcePath, start, end, suggestedName }) => {
+  if (!ffmpegBinary) return { ok: false, error: 'FFmpeg não está disponível.' };
+
+  const codec = await probeAudioCodec(sourcePath);
+  if (!codec) return { ok: false, error: 'Este arquivo não tem faixa de áudio.' };
+
+  const stem = sanitizeFileName(suggestedName) || path.basename(sourcePath, path.extname(sourcePath));
+  const dialogResult = await dialog.showSaveDialog(mainWindow, {
+    title: 'Salvar só o áudio',
+    defaultPath: path.join(path.dirname(sourcePath), `${stem}.mp3`),
+    filters: Object.entries(AUDIO_EXPORT_FORMATS).map(([ext, f]) => ({ name: f.label, extensions: [ext] }))
+  });
+  if (dialogResult.canceled || !dialogResult.filePath) return { ok: false, canceled: true };
+
+  let outPath = dialogResult.filePath;
+  let ext = path.extname(outPath).slice(1).toLowerCase();
+  if (!AUDIO_EXPORT_FORMATS[ext]) {
+    ext = 'mp3';
+    outPath += '.mp3';
+  }
+
+  // Gravar em cima da própria fonte destruiria a mídia (ffmpeg lê e escreve o
+  // mesmo arquivo)
+  if (path.resolve(outPath).toLowerCase() === path.resolve(sourcePath).toLowerCase()) {
+    return { ok: false, error: 'O destino é o próprio arquivo de origem. Escolha outro nome.' };
+  }
+
+  const { args } = buildExtractAudioArgs({ sourcePath, outPath, ext, codec, start, end });
+  const result = await runFfmpegAudio(args);
+  return result.ok ? { ok: true, path: outPath } : result;
+});
+
+// Exporta a MONTAGEM inteira como um arquivo só de áudio.
+//
+// O som da montagem (trechos de vídeo, trilhas, volume, mudo, solo, velocidade,
+// normalização, transições) já é resolvido por exportTimeline(). Em vez de
+// reescrever esse mix só para áudio — e correr o risco de ele sair diferente do
+// vídeo —, a composição roda normalmente para um temporário e o áudio é
+// extraído dele. O quadro vai no tamanho mínimo, porque a imagem será jogada
+// fora: o custo extra fica pequeno. Textos também ficam de fora.
+ipcMain.handle('export-timeline-audio', async (event, payload) => {
+  if (!ffmpegBinary) throw new Error('FFmpeg não está disponível.');
+
+  const safeBase = sanitizeFileName(payload.baseName) || 'audio';
+  const ext = audioFormatOrDefault(payload.audioFormat);
+
+  const notifyItem = (itemId, status, message) => {
+    event.sender.send('cut-status', { cutId: itemId, status, message });
+  };
+  const notifyOverall = (percent, message) => {
+    event.sender.send('export-overall', { percent, message });
+  };
+
+  const tempDir = path.join(app.getPath('temp'), `cutting_au_${Date.now()}`);
+  fs.mkdirSync(tempDir, { recursive: true });
+
+  try {
+    // A composição ocupa até 90% da barra; a conversão final, o resto
+    const mixed = await exportTimeline(
+      event,
+      { ...payload, format: normalizeFormat(AUDIO_ONLY_FRAME), texts: [], split: null },
+      tempDir,
+      'mix',
+      notifyItem,
+      (percent, message) => notifyOverall(Math.round(percent * 0.9), message)
+    );
+
+    notifyOverall(92, 'Gerando o arquivo de áudio...');
+    const outPath = uniquePath(payload.outputDir, `${safeBase}.${ext}`);
+    const result = await runFfmpegAudio(buildMixToAudioArgs({ mixedPath: mixed.path, outPath, ext }));
+    if (!result.ok) throw new Error(result.error);
+
+    notifyOverall(100, 'Áudio gerado com sucesso.');
+    return { path: outPath, outputDir: payload.outputDir, duration: mixed.duration };
+  } finally {
+    try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (e) {}
+  }
+});
+
+// Extrai o áudio de um vídeo para um .m4a ao lado dele (ou, se a pasta não
+// aceitar gravação, em Documentos\Cutting). Reaproveita a extração anterior
+// enquanto o vídeo não for modificado depois dela.
+ipcMain.handle('separate-audio', async (event, { sourcePath }) => {
+  if (!ffmpegBinary) return { ok: false, error: 'FFmpeg não está disponível.' };
+
+  const codec = await probeAudioCodec(sourcePath);
+  if (!codec) return { ok: false, error: 'Este vídeo não tem faixa de áudio.' };
+
+  let dir = path.dirname(sourcePath);
+  try {
+    fs.accessSync(dir, fs.constants.W_OK);
+  } catch (err) {
+    dir = path.join(app.getPath('documents'), 'Cutting', 'Áudios extraídos');
+    fs.mkdirSync(dir, { recursive: true });
+  }
+
+  const stem = sanitizeFileName(path.basename(sourcePath, path.extname(sourcePath))) || 'audio';
+  const fileName = `${stem} (áudio).m4a`;
+  const existing = path.join(dir, fileName);
+
+  try {
+    if (fs.existsSync(existing) && fs.statSync(existing).mtimeMs >= fs.statSync(sourcePath).mtimeMs) {
+      return { ok: true, path: existing, reused: true };
+    }
+  } catch (err) {
+    // sem como comparar datas: extrai de novo, num nome livre
+  }
+
+  const outPath = uniquePath(dir, fileName);
+  const result = await runFfmpegAudio(buildSeparateAudioArgs({ sourcePath, outPath, codec }));
+  return result.ok ? { ok: true, path: outPath, reused: false } : result;
+});
+
+// ==========================================================================
 // PROJETO (.cutting)
 //
 // O arquivo guarda a MONTAGEM, não as mídias: só os caminhos delas. É a
@@ -1950,10 +1658,6 @@ const KEYFRAME_EXACT_TOLERANCE = 0.042;
 const IMAGE_CLIP_FPS = 30;
 const IMAGE_MIN_DURATION = 0.1;
 
-// Limites do zoom da foto dentro do quadro. 1 = a foto inteira encaixada;
-// abaixo disso ela afasta e sobra fundo, acima disso ela transborda e é aparada.
-const IMAGE_MIN_ZOOM = 0.1;
-const IMAGE_MAX_ZOOM = 5;
 
 const DEFAULT_FRAMING = { zoom: 1, offsetX: 0, offsetY: 0, background: { mode: 'color', color: '#000000' } };
 

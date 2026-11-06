@@ -1330,6 +1330,16 @@ body {
   color: #fff;
 }
 
+.audio-actions {
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* --- PRÉVIA DA SEQUÊNCIA (sobreposta ao player) --- */
 .sequence-overlay {
   position: absolute;
@@ -2751,6 +2761,15 @@ body {
   color: #fff;
 }
 
+/* Confirmação com atraso: o botão fica apagado enquanto a contagem corre */
+.danger-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: rgba(236, 72, 153, 0.12);
+  border-color: rgba(236, 72, 153, 0.45);
+  color: #f9a8d4;
+}
+
 .danger-btn:focus-visible,
 .modal-footer .ghost-btn:focus-visible {
   outline: 2px solid var(--accent-cyan);
@@ -3049,6 +3068,14 @@ body {
 
 .media-card:hover .media-remove { opacity: 1; }
 .media-remove:hover { background: var(--accent-pink); color: #fff; }
+
+/* "Só áudio": mesmo estilo do remover, ao lado dele */
+.media-audio-only {
+  right: 27px;
+}
+.media-card:hover .media-audio-only { opacity: 1; }
+.media-audio-only:hover { background: var(--accent-purple); color: #fff; }
+.media-audio-only:disabled { opacity: 1; cursor: progress; }
 
 .media-empty {
   flex: 1;

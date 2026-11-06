@@ -43,6 +43,21 @@ contextBridge.exposeInMainWorld('api', {
   // mídia inteira. Devolve null quando não há faixa de áudio.
   getAudioPeaks: (filePath) => ipcRenderer.invoke('get-audio-peaks', filePath),
 
+  // --- Só áudio ---
+  // Converte a mídia (ou o trecho start–end, em segundos da fonte) para um
+  // arquivo de áudio escolhido pelo usuário. → { ok, path } | { ok:false, canceled } | { ok:false, error }
+  extractAudio: ({ sourcePath, start, end, suggestedName }) =>
+    ipcRenderer.invoke('extract-audio', { sourcePath, start, end, suggestedName }),
+
+  // Exporta a linha do tempo como arquivo só de áudio. Mesmo payload do
+  // exportTimeline (tracks, items) + { outputDir, baseName, audioFormat }, com
+  // audioFormat: 'mp3' | 'm4a' | 'wav' | 'flac'. → { path, outputDir, duration }
+  exportTimelineAudio: (payload) => ipcRenderer.invoke('export-timeline-audio', payload),
+
+  // Grava o áudio do vídeo num .m4a ao lado dele, para virar um item de faixa
+  // de áudio. → { ok, path, reused } | { ok:false, error }
+  separateAudio: (sourcePath) => ipcRenderer.invoke('separate-audio', { sourcePath }),
+
   // --- Exportação ---
   // clips: [{ id, sourcePath, start, end, kind, framing }] — a ordem é a ordem final
   //   kind: 'video' | 'image' (foto exibida pelo tempo entre start e end)

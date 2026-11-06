@@ -5,7 +5,10 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node test_backend.js",
+    "test": "node --test --test-timeout=240000 \"tests/unit/*.test.js\" \"tests/integracao/*.test.js\"",
+    "test:unit": "node --test \"tests/unit/*.test.js\"",
+    "test:integracao": "node --test --test-timeout=240000 \"tests/integracao/*.test.js\"",
+    "test:legado": "node test_backend.js",
     "dist": "electron-packager . Cutting --platform=win32 --arch=x64 --out=dist --overwrite --icon=build/icon.ico --app-copyright=\"© Lucas Gulich\" --asar.unpack=**/{ffmpeg-static,@ffprobe-installer}/**",
     "icone": "electron gerar-icone.js && node empacotar-icone.js"
   },
@@ -26,5 +29,8 @@
   "devDependencies": {
     "electron": "^31.3.1",
     "electron-packager": "^17.1.2"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

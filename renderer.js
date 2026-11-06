@@ -31,6 +31,17 @@
 // acrescente campos ao clipe e trate-os em buildExportPayload()/main.js.
 // ==========================================================================
 
+// Regras puras (tempo, duração, montagem simples, separar áudio): lib/linhadotempo.js,
+// carregado antes deste arquivo. Ficam lá para poderem ser testadas sem a tela.
+const {
+  clamp, getFileName, stripExtension, formatTime, parseTimeToSeconds,
+  clipSpeed, clipDuration, clipEnd, sequenceDuration: libSequenceDuration,
+  defaultColor, clipColor, hasColorAdjust, hasAdjustments, hasAudioTweaks,
+  isSimpleTimeline: libIsSimpleTimeline,
+  findFreeAudioTrack, buildSeparatedAudioClip,
+  hasVisualClips: libHasVisualClips, resolveJoinMode, describeAudioOnlyLoss
+} = window.CuttingTempo;
+
 // --- ESTADO: TELA DE CORTE ---
 let sources = [];
 let clips = [];
@@ -47,6 +58,10 @@ let pixelsPerSecond = 70;
 
 let outputDirPath = null;
 let lastExportTarget = null; // caminho para o botão "Abrir Pasta"
+
+// Distingue "o app escolheu Somente áudio" de "a pessoa escolheu": só a primeira
+// é desfeita sozinha quando a montagem ganha imagem de novo.
+let joinModeForcedAudio = false;
 
 
 // --- ESTADO: TELA DE MESCLAGEM ---
@@ -178,6 +193,9 @@ const propsHeadline = $('props-headline');
 const groupTrim = $('group-trim');
 const groupFraming = $('group-framing');
 const groupVolume = $('group-volume');
+const btnSeparateAudio = $('btn-separate-audio');
+const btnExportAudio = $('btn-export-audio');
+const audioActionsHint = $('audio-actions-hint');
 const btnAddTitle = $('btn-add-title');
 const btnAddSubtitle = $('btn-add-subtitle');
 const textLane = $('text-lane');
@@ -313,6 +331,10 @@ const btnSelectOutput = $('btn-select-output');
 const inputOutputName = $('input-output-name');
 const outputNameHint = $('output-name-hint');
 const selectJoinMode = $('select-join-mode');
+const joinModeHint = $('join-mode-hint');
+const selectAudioFormat = $('select-audio-format');
+const audioFormatGroup = $('audio-format-group');
+const videoFormatGroup = $('video-format-group');
 const btnExport = $('btn-export');
 
 // Progresso (corte)
@@ -399,49 +421,10 @@ const btnConfirmSave = $('btn-confirm-save');
 // AUXILIARES E FORMATADORES
 // ==========================================================================
 
-function getFileName(filePath) {
-  return String(filePath).split(/[\\/]/).pop();
-}
-
-function stripExtension(fileName) {
-  return fileName.replace(/\.[^.]+$/, '');
-}
-
 function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
   ));
-}
-
-const pad2 = (n) => String(n).padStart(2, '0');
-
-// Formata segundos como HH:MM:SS.mmm (ou HH:MM:SS se withMs=false).
-// A precisão de milissegundos importa: cortes de vídeo raramente caem em
-// segundos inteiros, e truncar aqui jogava fora a precisão que o corte suporta.
-function formatTime(seconds, withMs = true) {
-  if (seconds === null || seconds === undefined || isNaN(seconds)) {
-    return withMs ? '00:00:00.000' : '00:00:00';
-  }
-  const sign = seconds < 0 ? '-' : '';
-  const totalMs = Math.round(Math.abs(seconds) * 1000);
-  const ms = totalMs % 1000;
-  const totalSec = Math.floor(totalMs / 1000);
-  const base = `${pad2(Math.floor(totalSec / 3600))}:${pad2(Math.floor(totalSec / 60) % 60)}:${pad2(totalSec % 60)}`;
-  return sign + (withMs ? `${base}.${String(ms).padStart(3, '0')}` : base);
-}
-
-// Aceita HH:MM:SS.mmm, MM:SS.mmm, SS.mmm e número puro de segundos.
-function parseTimeToSeconds(timeStr) {
-  if (timeStr === null || timeStr === undefined) return 0;
-  const raw = String(timeStr).trim().replace(',', '.');
-  if (!raw) return 0;
-
-  const parts = raw.split(':');
-  const nums = parts.map((p) => parseFloat(p) || 0);
-
-  if (nums.length === 3) return nums[0] * 3600 + nums[1] * 60 + nums[2];
-  if (nums.length === 2) return nums[0] * 60 + nums[1];
-  return nums[0];
 }
 
 function formatBytes(bytes, decimals = 2) {
@@ -452,7 +435,6 @@ function formatBytes(bytes, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(Math.max(0, decimals))) + ' ' + sizes[i];
 }
 
-const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
 // ==========================================================================
 // NAVEGAÇÃO ENTRE TELAS
@@ -573,20 +555,32 @@ btnCloseShortcuts.addEventListener('click', () => closeModal(shortcutsModal));
 // bloqueia o processo do renderer (um alert() nativo já travou o app aqui).
 // --------------------------------------------------------------------------
 let confirmResolve = null;
+let confirmDelayTimer = null;
 
+// Todo caminho que encerra a confirmação passa por aqui (confirmar, cancelar,
+// X, Esc, fundo, ou outra confirmação que a substitui) — então é o lugar certo
+// para parar a contagem do atraso e devolver o botão ao normal.
 function settleConfirm(result) {
+  clearInterval(confirmDelayTimer);
+  confirmDelayTimer = null;
+  btnConfirmOk.disabled = false;
+
   const resolve = confirmResolve;
   confirmResolve = null;
   if (resolve) resolve(result);
 }
 
+// confirmDelaySeconds: tempo em que o botão de confirmar fica desabilitado, com
+// a contagem no próprio rótulo. Serve para avisos que a pessoa PRECISA ler antes
+// de aceitar (ex.: perder o vídeo ao salvar só o áudio).
 function askConfirm({
   title,
   message,
   details = [],
   confirmLabel = 'Sair sem salvar',
   cancelLabel = 'Continuar editando',
-  offerSave = false
+  offerSave = false,
+  confirmDelaySeconds = 0
 }) {
   // Uma confirmação por vez: se já houver outra na tela, ela é cancelada.
   if (confirmResolve) settleConfirm(false);
@@ -609,6 +603,24 @@ function askConfirm({
 
   return new Promise((resolve) => {
     confirmResolve = resolve;
+
+    if (confirmDelaySeconds > 0) {
+      let remaining = confirmDelaySeconds;
+      btnConfirmOk.disabled = true;
+      btnConfirmOk.textContent = `${confirmLabel} (${remaining})`;
+      confirmDelayTimer = setInterval(() => {
+        remaining -= 1;
+        if (remaining > 0) {
+          btnConfirmOk.textContent = `${confirmLabel} (${remaining})`;
+          return;
+        }
+        clearInterval(confirmDelayTimer);
+        confirmDelayTimer = null;
+        btnConfirmOk.disabled = false;
+        btnConfirmOk.textContent = confirmLabel;
+      }, 1000);
+    }
+
     // Fechar por X, Esc ou clique no fundo equivale a desistir da ação.
     openModal(confirmModal, () => settleConfirm(false));
     // O foco começa na opção segura: um Enter reflexo não descarta nada.
@@ -784,7 +796,8 @@ function exportSettings() {
     outputDir: outputDirPath,
     formatId: selectOutputFormat.value,
     fit: fit ? fit.value : 'cover',
-    joinMode: selectJoinMode.value
+    joinMode: selectJoinMode.value,
+    audioFormat: selectAudioFormat.value
   };
 }
 
@@ -802,6 +815,7 @@ function applyExportSettings(settings) {
   const fit = segmentedFit.querySelector(`input[value="${settings.fit}"]`);
   if (fit) fit.checked = true;
   if (settings.joinMode) selectJoinMode.value = settings.joinMode;
+  if (settings.audioFormat) selectAudioFormat.value = settings.audioFormat;
 }
 
 function buildProjectFile() {
@@ -1075,44 +1089,14 @@ const baseItems = () => {
   return base ? itemsOfTrack(base.id) : [];
 };
 
-const clipSpeed = (clip) => clamp(Number(clip && clip.speed) || 1, 0.1, 10);
-
-// Duração NA LINHA DO TEMPO: o trecho da fonte dividido pela velocidade.
-// Um corte de 10s a 2x ocupa 5s na montagem.
-const clipDuration = (clip) => Math.max(0, (clip.end - clip.start) / clipSpeed(clip));
-const clipEnd = (clip) => clip.timelineStart + clipDuration(clip);
-
-// Duração total = onde termina o item que vai mais longe. Deixou de ser a soma
-// das durações: com posição no tempo existem vazios e sobreposições.
-const sequenceDuration = () => clips.reduce((max, c) => Math.max(max, clipEnd(c)), 0);
+// clipSpeed, clipDuration e clipEnd vêm de lib/linhadotempo.js (testados).
+const sequenceDuration = () => libSequenceDuration(clips);
 
 // A montagem é "simples" quando cabe no caminho antigo de exportação — aquele
 // que consegue cortar SEM PERDA. Basta uma faixa de vídeo usada, itens colados
 // desde o zero, nada de sobreposição nem trilha.
 function isSimpleTimeline() {
-  const base = baseTrack();
-  if (!base) return false;
-  if (clips.some((c) => c.trackId !== base.id)) return false;
-
-  // Qualquer ajuste de imagem ou de velocidade obriga a recodificar, então a
-  // montagem deixa de caber no caminho simples (que só junta os arquivos).
-  if (clips.some(hasAdjustments)) return false;
-
-  // O mesmo vale para o som: o caminho simples não mexe no áudio, e volume,
-  // mudo ou normalização iam embora sem aviso nenhum.
-  if (clips.some(hasAudioTweaks)) return false;
-  if (tracks.some((t) => t.solo)) return false;
-
-  // Título ou legenda precisa ser gravado no quadro, o que o caminho simples
-  // não faz — ele apenas emenda os arquivos.
-  if (texts.some((t) => String(t.content || '').trim())) return false;
-
-  let cursor = 0;
-  for (const item of baseItems()) {
-    if (Math.abs(item.timelineStart - cursor) > 0.02) return false;
-    cursor = clipEnd(item);
-  }
-  return true;
+  return libIsSimpleTimeline({ tracks, clips, texts });
 }
 
 const editorSignature = () => JSON.stringify(
@@ -1466,14 +1450,6 @@ const hasCustomFraming = (framing) => !isDefaultFraming(framing);
 
 // Algum trecho da sequência tem enquadramento personalizado? Isso obriga a
 // recodificar, então influencia a disponibilidade do modo Rápido.
-// Trecho com o som mexido: volume, mudo ou normalização. Como o corte sem
-// perda só copia os streams, qualquer um deles obriga a recodificar.
-const hasAudioTweaks = (clip) => !!clip && (
-  !!clip.muted ||
-  (clip.volume !== undefined && clip.volume !== 1) ||
-  !!clip.normalize
-);
-
 const sequenceHasFraming = () =>
   clips.some((c) => hasCustomFraming(c.framing) || hasAdjustments(c) || hasAudioTweaks(c));
 
@@ -1797,6 +1773,7 @@ function renderPropsPanel() {
     return s && s.kind !== 'image';
   });
   groupVolume.classList.toggle('hidden', many ? !anyWithAudio : isImage);
+  syncAudioActions(clip, source, many);
 
   blurOptionLabel.textContent = isImage ? 'Desfoque da foto' : 'Desfoque do vídeo';
 
@@ -1812,20 +1789,8 @@ function renderPropsPanel() {
 // em vez de mostrar algo diferente do arquivo final.
 // ==========================================================================
 
-const defaultColor = () => ({ brightness: 0, contrast: 1, saturation: 1 });
-
-const clipColor = (clip) => (clip && clip.color) || defaultColor();
-const hasColorAdjust = (c) => c.brightness !== 0 || c.contrast !== 1 || c.saturation !== 1;
-
-// Um trecho "mexido" precisa recodificar; serve para avisar e para decidir
-// se a montagem ainda cabe no caminho simples de exportação.
-const hasAdjustments = (clip) => !!clip && (
-  clipSpeed(clip) !== 1 ||
-  (clip.opacity !== undefined && clip.opacity < 1) ||
-  (clip.rotate || 0) !== 0 || clip.flipH || clip.flipV ||
-  hasColorAdjust(clipColor(clip)) ||
-  !!clip.chroma || !!clip.blurRegion
-);
+// defaultColor, clipColor, hasColorAdjust, hasAdjustments e hasAudioTweaks vêm
+// de lib/linhadotempo.js (testados).
 
 function updateClipAdjust(changes) {
   const clip = selectedClip();
@@ -2163,6 +2128,133 @@ function toggleTrackSolo(trackId) {
   renderAll();
   commitHistory();
 }
+
+// --- Só áudio: converter e separar ---
+//
+// "Exportar só áudio" grava um arquivo de som (mp3, m4a, wav, flac) a partir da
+// mídia, sem entrar na montagem. "Separar áudio do vídeo" extrai o som para um
+// .m4a, põe-no numa faixa de áudio no mesmo ponto do tempo e silencia o trecho
+// de vídeo — daí em diante cada metade tem o seu bloco, volume e posição.
+// O áudio vira um arquivo em disco (e não uma ligação virtual com o vídeo)
+// porque assim faixa, onda sonora, exportação e projeto salvo funcionam sem
+// nenhum caso especial.
+
+let audioJobRunning = false;
+
+function syncAudioActions(clip, source, many) {
+  const isVideo = source.kind === 'video';
+  const withAudio = isVideo && source.hasAudio;
+  // Separar mexe num trecho só; exportar vale para vídeo ou áudio com som
+  btnSeparateAudio.classList.toggle('hidden', !isVideo);
+  btnExportAudio.classList.toggle('hidden', source.kind === 'image');
+  btnSeparateAudio.disabled = many || !withAudio || audioJobRunning;
+  btnExportAudio.disabled = many || (isVideo && !withAudio) || audioJobRunning;
+
+  let hint = '';
+  if (isVideo && !source.hasAudio) hint = 'Este vídeo não tem faixa de áudio.';
+  else if (many) hint = 'Selecione um trecho só para separar ou exportar o áudio.';
+  audioActionsHint.textContent = hint;
+  audioActionsHint.classList.toggle('hidden', !hint);
+}
+
+function setAudioBusy(busy, button, busyLabel) {
+  audioJobRunning = busy;
+  if (button) {
+    if (busy) {
+      button.dataset.label = button.textContent;
+      button.textContent = busyLabel;
+    } else if (button.dataset.label) {
+      button.textContent = button.dataset.label;
+    }
+  }
+  const clip = selectedClip();
+  const source = clip && sourceById(clip.sourceId);
+  if (source && source.kind !== 'image') syncAudioActions(clip, source, selectedClipIds.size > 1);
+}
+
+// range = { start, end } em segundos da fonte, ou null para converter tudo.
+// O arquivo gerado é mostrado no Explorer ao terminar.
+async function exportAudioOnly(source, range, button) {
+  if (audioJobRunning) return;
+  setAudioBusy(true, button, 'Convertendo...');
+  try {
+    const result = await window.api.extractAudio({
+      sourcePath: source.path,
+      start: range ? range.start : undefined,
+      end: range ? range.end : undefined,
+      suggestedName: stripExtension(source.name)
+    });
+    if (result.canceled) return;
+    if (!result.ok) {
+      alert(`Não foi possível gerar o áudio:\n\n${result.error}`);
+      return;
+    }
+    window.api.revealPath(result.path);
+  } catch (err) {
+    console.error('Falha ao extrair áudio', err);
+    alert('Não foi possível gerar o áudio.');
+  } finally {
+    setAudioBusy(false, button);
+  }
+}
+
+async function separateAudioFromClip(clipId) {
+  if (audioJobRunning) return;
+  const clip = clips.find((c) => c.id === clipId);
+  const source = clip && sourceById(clip.sourceId);
+  if (!clip || !source || source.kind !== 'video' || !source.hasAudio) return;
+
+  setAudioBusy(true, btnSeparateAudio, 'Separando...');
+  try {
+    const result = await window.api.separateAudio(source.path);
+    if (!result.ok) {
+      alert(`Não foi possível separar o áudio:\n\n${result.error}`);
+      return;
+    }
+
+    // O clipe pode ter sido removido enquanto o ffmpeg trabalhava
+    if (!clips.includes(clip)) return;
+
+    await addSources([result.path]);
+    const audioSource = sources.find((s) => s.path === result.path);
+    if (!audioSource) return;
+
+    // Faixa livre no intervalo; se todas estiverem ocupadas, cria uma nova
+    const track = findFreeAudioTrack(tracks, clips, clip.timelineStart, clipEnd(clip))
+      || createTrack('audio');
+    clipIdCounter++;
+    const audioClip = buildSeparatedAudioClip(clip, audioSource, {
+      id: clipIdCounter, trackId: track.id, framing: defaultFraming()
+    });
+    clips.push(audioClip);
+
+    // O som passa a viver no bloco de áudio; o vídeo fica mudo
+    clip.muted = true;
+
+    selectItem(audioClip.id);
+    renderAll();
+    commitHistory();
+  } catch (err) {
+    console.error('Falha ao separar áudio', err);
+    alert('Não foi possível separar o áudio.');
+  } finally {
+    setAudioBusy(false, btnSeparateAudio);
+  }
+}
+
+btnSeparateAudio.addEventListener('click', () => {
+  const clip = selectedClip();
+  if (clip) separateAudioFromClip(clip.id);
+});
+
+btnExportAudio.addEventListener('click', () => {
+  const clip = selectedClip();
+  const source = clip && sourceById(clip.sourceId);
+  if (!source) return;
+  // Trecho que cobre a fonte inteira vai sem recorte (permite copiar o AAC)
+  const whole = clip.start <= 0.001 && clip.end >= (source.duration || 0) - 0.05;
+  exportAudioOnly(source, whole ? null : { start: clip.start, end: clip.end }, btnExportAudio);
+});
 
 // --- Normalizar volume ---
 inputNormalize.addEventListener('change', () => {
@@ -3514,13 +3606,24 @@ function renderMediaLibrary() {
         <span class="media-name">${escapeHtml(source.name)}</span>
         <span class="media-meta">${escapeHtml(KIND_LABEL[source.kind] || '')} · ${escapeHtml(meta)}</span>
       </div>
+      ${source.kind === 'video' && source.hasAudio
+        ? `<button class="media-remove media-audio-only" title="Converter para só áudio (MP3, M4A, WAV, FLAC)">${ICON_AUDIO_SMALL}</button>`
+        : ''}
       <button class="media-remove" title="Remover da biblioteca">${ICON_X}</button>
     `;
+
+    const audioOnlyBtn = card.querySelector('.media-audio-only');
+    if (audioOnlyBtn) {
+      audioOnlyBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        exportAudioOnly(source, null, audioOnlyBtn);
+      });
+    }
 
     card.addEventListener('click', () => setActiveSource(source.id));
     // Duplo clique acrescenta ao fim da faixa — atalho para quem não quer arrastar
     card.addEventListener('dblclick', () => addItemFromSource(source.id, targetTrackFor(source).id));
-    card.querySelector('.media-remove').addEventListener('click', (e) => {
+    card.querySelector('.media-remove:not(.media-audio-only)').addEventListener('click', (e) => {
       e.stopPropagation();
       removeSource(source.id);
     });
@@ -3543,6 +3646,8 @@ function renderMediaLibrary() {
 }
 
 const ICON_AUDIO = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6z"/></svg>';
+
+const ICON_AUDIO_SMALL = '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M12 3v10.55A4 4 0 1014 17V7h4V3h-6z"/></svg>';
 
 // Arraste em curso vindo da biblioteca
 let libraryDrag = null;
@@ -4213,19 +4318,51 @@ btnSelectOutput.addEventListener('click', async () => {
 
 inputOutputName.addEventListener('input', updateExportAvailability);
 selectJoinMode.addEventListener('change', () => {
-  updateNameHint();
   updateExportAvailability();
 });
+selectAudioFormat.addEventListener('change', updateNameHint);
 
+// --- Salvar só o áudio ---
+//
+// Montagem sem nada de imagem (só trilhas de áudio) não tem o que salvar como
+// vídeo: "Somente áudio" passa a ser a única saída e já vem escolhida. Com
+// imagem na montagem, a opção continua disponível, mas descartar o vídeo exige
+// confirmação (ver o clique de exportar).
+const hasVisualClips = () => libHasVisualClips(clips, sources);
+
+function syncJoinModeOptions() {
+  const state = resolveJoinMode({
+    visual: hasVisualClips(),
+    current: selectJoinMode.value,
+    forced: joinModeForcedAudio
+  });
+  joinModeForcedAudio = state.forced;
+
+  [...selectJoinMode.options].forEach((option) => {
+    if (option.value !== 'audio') option.disabled = state.videoOptionsDisabled;
+  });
+  selectJoinMode.value = state.value;
+
+  audioFormatGroup.classList.toggle('hidden', !state.showAudioOptions);
+  videoFormatGroup.classList.toggle('hidden', state.showAudioOptions);
+  btnExport.textContent = state.buttonLabel;
+
+  joinModeHint.textContent = state.hint;
+  joinModeHint.classList.toggle('hidden', !state.hint);
+}
 
 function updateNameHint() {
-  const base = inputOutputName.value.trim() || 'meu_video';
-  outputNameHint.innerHTML = selectJoinMode.value === 'merged'
-    ? `Um único arquivo: <code>${escapeHtml(base)}.mp4</code>`
-    : `Será salvo como <code>${escapeHtml(base)}_1.mp4</code>, <code>${escapeHtml(base)}_2.mp4</code>…`;
+  const mode = selectJoinMode.value;
+  const base = inputOutputName.value.trim() || (mode === 'audio' ? 'meu_audio' : 'meu_video');
+  outputNameHint.innerHTML = mode === 'audio'
+    ? `Um único arquivo: <code>${escapeHtml(base)}.${escapeHtml(selectAudioFormat.value)}</code>`
+    : mode === 'merged'
+      ? `Um único arquivo: <code>${escapeHtml(base)}.mp4</code>`
+      : `Será salvo como <code>${escapeHtml(base)}_1.mp4</code>, <code>${escapeHtml(base)}_2.mp4</code>…`;
 }
 
 function updateExportAvailability() {
+  syncJoinModeOptions();
   updateNameHint();
   // A disponibilidade do modo Rápido depende da MONTAGEM (enquadramento nos
   // trechos), não só do formato escolhido. Sem repintar aqui, o estado ficava
@@ -4474,11 +4611,37 @@ btnExport.addEventListener('click', async () => {
   const mode = 'precise';   // o corte é sempre preciso; o modo Rápido saiu da interface
   const baseName = inputOutputName.value.trim();
 
+  // Salvar só o áudio de uma montagem COM imagem joga a imagem fora. O botão de
+  // confirmar espera 3 segundos de propósito: o aviso precisa ser lido, não
+  // atravessado por um clique reflexo.
+  if (joinMode === 'audio' && hasVisualClips()) {
+    const countKind = (kind) => clips.filter((c) => {
+      const source = sourceById(c.sourceId);
+      return source && source.kind === kind;
+    }).length;
+    const videos = countKind('video');
+    const photos = countKind('image');
+    const typedTexts = texts.filter((t) => String(t.content || '').trim()).length;
+
+    const confirmed = await askConfirm({
+      title: 'Salvar só o áudio?',
+      message: 'O arquivo gerado terá somente o som da montagem. Todo o vídeo será ' +
+        'descartado e não poderá ser recuperado a partir desse arquivo.',
+      details: describeAudioOnlyLoss({ videos, photos, texts: typedTexts }),
+      confirmLabel: 'Salvar só o áudio',
+      cancelLabel: 'Voltar',
+      confirmDelaySeconds: 3
+    });
+    if (!confirmed) return;
+  }
+
   // Troca o modal para a etapa de progresso e o trava até terminar
   exportStepForm.classList.add('hidden');
   exportStepProgress.classList.remove('hidden');
   exportModal.dataset.busy = '1';
-  exportModalTitle.textContent = joinMode === 'merged' ? 'Montando Vídeo Único' : 'Exportando Trechos';
+  exportModalTitle.textContent = joinMode === 'audio'
+    ? 'Exportando Áudio'
+    : joinMode === 'merged' ? 'Montando Vídeo Único' : 'Exportando Trechos';
   btnCloseExportModal.classList.add('hidden');
   btnCloseProgress.classList.add('hidden');
   btnOpenFolder.classList.add('hidden');
@@ -4524,6 +4687,25 @@ btnExport.addEventListener('click', async () => {
   });
 
   try {
+    if (joinMode === 'audio') {
+      const result = await window.api.exportTimelineAudio({
+        ...buildTimelinePayload(),
+        outputDir: outputDirPath,
+        baseName,
+        background: timelineBackgroundColor(),
+        audioFormat: selectAudioFormat.value
+      });
+
+      exportProgressBarFill.style.width = '100%';
+      lastExportTarget = result.path;
+      exportProgressText.textContent = `Áudio gerado: ${getFileName(result.path)}`;
+      // Só conta como "montagem exportada" quando nada de imagem ficou de fora;
+      // senão fechar o app não avisaria que o vídeo nunca foi salvo.
+      if (!hasVisualClips()) lastExportedEditorSignature = editorSignature();
+      btnOpenFolder.classList.remove('hidden');
+      return;
+    }
+
     // Composição só quando é preciso: com faixas, vazios ou trilha, o caminho
     // antigo não dá conta. Enquanto a montagem for uma faixa só de trechos
     // colados, ele é preferido porque consegue cortar SEM PERDA.
